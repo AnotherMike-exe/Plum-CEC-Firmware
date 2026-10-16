@@ -1,0 +1,7 @@
+# Template, untested. Copy to /etc/systemd/system/.
+# The kernel docs recommend a restart after resume (a unit ordered After=suspend.target).
+[Unit]
+Description=inputattach for pulse8-cec device on %I
+
+[Service]
+ExecStart=/usr/bin/inputattach --pulse8-cec /dev/%I

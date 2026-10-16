@@ -1,0 +1,2 @@
+# Template, untested. Copy to /etc/udev/rules.d/ and set the real serial number.
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="<SERIAL>", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}+="cec-adapter-inputattach@%k.service"

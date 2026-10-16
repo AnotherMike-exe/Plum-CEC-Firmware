@@ -1,0 +1,3 @@
+CONFIG_IDF_TARGET="esp32c3"
+# Logs stay on UART0 (devkit bridge). Native USB carries protocol bytes only.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
