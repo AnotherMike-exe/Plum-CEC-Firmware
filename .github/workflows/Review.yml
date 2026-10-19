@@ -16,7 +16,7 @@ jobs:
     name: clang-format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y clang-format
       - run: |
           find main components -name '*.c' -o -name '*.h' \
@@ -26,7 +26,7 @@ jobs:
     name: ESP-IDF build (esp32c3)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: espressif/esp-idf-ci-action@v1.2.0
         with:
           esp_idf_version: ${{ env.IDF_VERSION }}
@@ -46,7 +46,7 @@ jobs:
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: anthropics/claude-code-action@v1
         if: ${{ env.ANTHROPIC_API_KEY != '' }}
         with:
