@@ -133,7 +133,7 @@ The README files already link to `github.com/AnotherMike-exe/<repo>`.
 
 **Tasks**:
 1. In each repo, create branch `docs/design-decisions` and commit the session files.
-2. Visibility: private now. The owner decided to make both repos public after step 12.
+2. Visibility: public. The owner decided this on 2026-10-19, so that the ruleset works on the free plan.
 3. Load the `github-setup` skill. Create both remotes with that visibility, and push `main` first.
 4. Set the ruleset on `main`: PR required, linear history. Do not set required status checks yet. Step 2 renames the CI jobs and sets them.
 5. Push the branch, open the PR, and merge it when CI passes.
@@ -484,4 +484,4 @@ approve each PR before you open it.
 
 - 2026-10-19: first draft from the design session.
 - 2026-10-19: adversarial review fixes. Broadcast TX results and one bus attempt for each request (C1). Attached and Detached handover, invariant 8 (C2). Step 9 split into 9a, 9b and 9c, with no RMT TX. Hardware timing probe on GPIO4. ADR 0005. Reference sources moved into hardware `_resources/Research/`. T4 by hand with `systemd-run`. Shutdown unit and controller wake in step 11. Required checks moved to step 2. Host sleep settings applied. Estimate 36 h → 60 h.
-- 2026-10-19: owner approved the plan and the GPIO4 jumper. Repos start private, and become public when the proof of concept is done (after step 12).
+- 2026-10-19: owner approved the plan and the GPIO4 jumper. Repos are public from step 1, because a free account has no rulesets on a private repo. Commits keep the Gmail author address, as in the other Plum repos.
