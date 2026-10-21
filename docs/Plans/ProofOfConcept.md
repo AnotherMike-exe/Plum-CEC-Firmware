@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Steps 1 and 2 done 2026-10-20. Steps 3 and 7 in progress.
+**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Step 3 in progress.
 
 ## Read this first (every step)
 
