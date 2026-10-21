@@ -5,33 +5,32 @@ that is missing, because it is trusted.
 
 ## What this is
 
-ESP32-C3 firmware for a DIY HDMI-CEC adapter. It bit-bangs CEC on GPIO10, speaks the
-Pulse-Eight protocol over USB so Linux gets `/dev/cec0`, and takes commands over WiFi
-for Home Assistant. The goal is a gaming PC that wakes and sleeps the TV like a console.
+ESPHome firmware for a DIY HDMI-CEC adapter on an ESP32-C3. It bit-bangs CEC on GPIO10,
+speaks the Pulse-Eight protocol over USB so Linux gets `/dev/cec0`, and takes commands
+over WiFi for Home Assistant (native API, optional MQTT). The goal is a gaming PC that wakes and sleeps the TV like a console.
 The hardware is in the sibling repo
 [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Hardware). The original
 outline is in `_resources/Notes/cec-adapter-overview.md`.
 
-**Stage**: prototype (scaffold, milestone M0)
+**Stage**: prototype (ESPHome scaffold, milestone M0)
 **Deployed on**: ESP32-C3-DevKitC-02 on the bench
 
 ## Stack
 
 | Part | Choice |
 |---|---|
-| Language | C (C17) |
-| Framework | ESP-IDF v5.5, FreeRTOS |
-| Target | esp32c3 |
+| Language | C++ (components), Python (codegen, host scripts), YAML (config) |
+| Framework | ESPHome 2026.9.1, pinned in `requirements.txt`. It brings ESP-IDF 5.5.x through PlatformIO |
+| Target | esp32c3 (`esp32-c3-devkitc-02`) |
 | Host side | `pulse8-cec` kernel driver, `inputattach`, `cec-ctl` (v4l-utils) |
 
 ## Layout
 
 ```
-main/                     app_main, task start-up, shared queue and identity state
-components/cec_phy/       CEC bit-level RX and TX
-components/pulse8/        Pulse-Eight serial endpoint
-components/net/           WiFi, MQTT, HTTP
-test/                     tests (none yet)
+PlumCec.yaml              the ESPHome configuration for the Adapter
+secrets.example.yaml      template for secrets.yaml (git-ignored)
+components/               ESPHome external components (empty until step 4)
+test/                     host unit tests (none yet)
 scripts/                  udev rule and systemd unit templates for the PC
 docs/                     every document except README.md
 _resources/               dev references, never in git
@@ -40,25 +39,29 @@ _resources/               dev references, never in git
 ## Commands
 
 ```bash
-. $IDF_PATH/export.sh                   # load ESP-IDF
-idf.py set-target esp32c3               # one time
-idf.py build                            # build
-idf.py -p /dev/ttyUSB0 flash monitor    # flash and watch UART0
-clang-format --dry-run --Werror main/*.c components/*/*.c components/*/include/*.h   # lint
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt   # one time
+.venv/bin/esphome compile PlumCec.yaml                                   # build
+.venv/bin/esphome run PlumCec.yaml --device /dev/cu.usbserial-10         # flash over the devkit bridge
+.venv/bin/esphome logs PlumCec.yaml                                      # logs over WiFi
+find components -name '*.cpp' -o -name '*.h' | xargs .venv/bin/clang-format --dry-run --Werror
+.venv/bin/pytest scripts/
 ```
 
 ## Conventions
 
-**Naming**: C has no binding convention, so this repo follows the ESP-IDF idiom.
-Components, files, functions and variables are `snake_case`, with the component name as
-a prefix (`cec_phy_init`). Types are `snake_case_t`. Constants and macros are
-`UPPER_SNAKE_CASE`. Directories that ESP-IDF does not name are PascalCase.
+**Naming**: ESPHome binds the names, so this repo follows the ESPHome idiom. Component
+directories, files, functions and variables are `snake_case`. Classes are PascalCase.
+Constants are `UPPER_SNAKE_CASE`. Directories that ESPHome does not name are PascalCase.
 
-**Errors**: return `esp_err_t` and check with `ESP_ERROR_CHECK` at start-up only. In
-running tasks, log with `ESP_LOGW` or `ESP_LOGE` and continue.
+**Format**: `.clang-format` is the ESPHome file, and `clang-format` is pinned to the
+ESPHome version. The CEC code goes upstream (plan step 13), so it keeps the upstream format.
+
+**Errors**: in `setup()`, call `mark_failed()` on a fatal error. In `loop()` and tasks,
+log with `ESP_LOGW` or `ESP_LOGE` and continue.
 
 **Project-specific rules**:
-- Logs go to UART0 only. The USB-CDC port carries protocol bytes and nothing else.
+- Logs go to UART0 only. USB Serial/JTAG carries Pulse-Eight bytes and nothing else.
+- Secrets go in `secrets.yaml` only. Never commit it.
 - Never write to USB from the CEC ISR. Use queues, and drop on overflow.
 - No sleep modes while USB is attached.
 - GPIO18 and GPIO19 stay reserved for USB.
@@ -87,7 +90,7 @@ Each phase of the build runs the same five steps.
 2. Build. Name `tdd-workflow` only for a bug fix, where the test is the reproducer
 3. `verification-loop` — the gate at the end of the phase
 4. Review in parallel: `code-reviewer`, `security-reviewer` and `code-reviewer` with
-   an embedded C focus (no C-specific reviewer agent exists yet)
+   an embedded C++ focus (no C++ reviewer agent exists yet)
 5. `/learn-eval`, then `/save-session`
 
 Commit at the end of every phase. A local commit costs nothing and gives the review a
@@ -99,7 +102,8 @@ fresh session can execute cold.
 ## Gotchas
 
 - Opening the serial port can reset the chip through DTR/RTS. Not tested yet (M3, T1).
-- Check the license of esphome-native-hdmi-cec before you copy any of its CEC code.
+- The bench plan is `docs/Plans/ProofOfConcept.md`. The decisions are in `docs/adr/`.
+- A placeholder WiFi password shorter than 8 characters fails `esphome compile`.
 
 ## Where the rules live
 

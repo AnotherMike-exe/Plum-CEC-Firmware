@@ -56,7 +56,6 @@ tmp/
 temp/
 *.tmp
 
-# ESP-IDF
-sdkconfig
-sdkconfig.old
-managed_components/
+# ESPHome
+secrets.yaml
+.esphome/

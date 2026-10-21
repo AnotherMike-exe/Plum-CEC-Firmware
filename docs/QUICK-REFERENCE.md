@@ -7,15 +7,18 @@
 ## Daily commands
 
 ```bash
-# Build, flash, monitor
-idf.py build
-idf.py -p /dev/ttyUSB0 flash monitor
+# Build, flash, logs
+.venv/bin/esphome compile PlumCec.yaml
+.venv/bin/esphome run PlumCec.yaml --device /dev/cu.usbserial-10   # serial
+.venv/bin/esphome run PlumCec.yaml                                 # OTA over WiFi
+.venv/bin/esphome logs PlumCec.yaml
 
-# Lint
-clang-format --dry-run --Werror main/*.c components/*/*.c components/*/include/*.h
+# Lint and test
+find components -name '*.cpp' -o -name '*.h' | xargs .venv/bin/clang-format --dry-run --Werror
+.venv/bin/pytest scripts/
 
-# PC side (Linux)
-sudo inputattach --pulse8-cec --baud <rate> /dev/ttyUSB0
+# Host side (Linux)
+sudo inputattach --pulse8-cec /dev/ttyACM0
 cec-ctl -d /dev/cec0 --playback -p 1.0.0.0
 cec-ctl -d /dev/cec0 -S                  # show topology
 cec-ctl -d /dev/cec0 --monitor-all       # watch all frames
@@ -26,8 +29,9 @@ cec-ctl -d /dev/cec0 --monitor-all       # watch all frames
 | Function | GPIO |
 |---|---|
 | CEC data | 10 |
+| Timing probe (jumper to GPIO10, step 6) | 4 |
 | Native USB D− / D+ | 18 / 19 (reserved) |
-| Status LED | 8 |
+| Status LED (WS2812) | 8 |
 | BOOT / recovery | 9 |
 
 Full wiring: [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Hardware)
@@ -36,14 +40,11 @@ Full wiring: [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Har
 
 | What | Where |
 |---|---|
-| Console and logs | UART0 through the devkit bridge (`/dev/ttyUSB0`) |
-| Pulse-Eight protocol | UART0 (M2), then native USB-CDC (M3, `/dev/ttyACM*`) |
-| MQTT commands | `cec/<id>/cmd` |
-| MQTT state | `cec/<id>/state` |
-| MQTT frames | `cec/<id>/frames` |
-| HTTP | `POST /cmd`, `GET /status` |
-
-MQTT command ops: `tv_on`, `tv_standby`, `active_source`, `inactive_source`, `raw`.
+| Console and logs | UART0 through the devkit bridge (`/dev/cu.usbserial-*` on macOS) |
+| Pulse-Eight protocol | Native USB Serial/JTAG (`/dev/ttyACM*` on the Host, from M3) |
+| Home Assistant | ESPHome native API, port 6053, Noise encryption |
+| OTA | Port 3232, encrypted with the API key |
+| Fallback AP | `Plum-CEC Fallback`, password in `secrets.yaml` |
 
 ## Protocol timing
 
@@ -57,7 +58,6 @@ MQTT command ops: `tv_on`, `tv_standby`, `active_source`, `inactive_source`, `ra
 
 ### `/dev/cec0` does not appear
 → Set `/sys/module/pulse8_cec/parameters/debug` to 2 and read `dmesg`.
-→ Make sure the `--baud` value matches the firmware UART baud.
 
 ### Native USB device does not show
 → Hold GPIO9 low and push reset (download mode).
@@ -67,6 +67,7 @@ MQTT command ops: `tv_on`, `tv_standby`, `active_source`, `inactive_source`, `ra
 
 - [Architecture](ARCHITECTURE.md)
 - [Dev setup](DEV-SETUP.md)
+- [Bench plan](Plans/ProofOfConcept.md)
 - [Hardware repo](https://github.com/AnotherMike-exe/Plum-CEC-Hardware)
 - [Issues](https://github.com/AnotherMike-exe/Plum-CEC-Firmware/issues)
 

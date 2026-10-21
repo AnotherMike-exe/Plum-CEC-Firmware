@@ -8,32 +8,61 @@ on:
 permissions:
   contents: read
 
-env:
-  IDF_VERSION: v5.5
-
 jobs:
   lint:
     name: clang-format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang-format
-      - run: |
-          find main components -name '*.c' -o -name '*.h' \
-            | xargs clang-format --dry-run --Werror
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Check the C++ format
+        run: |
+          find components -name '*.cpp' -o -name '*.h' \
+            | xargs -r clang-format --dry-run --Werror
 
-  build:
-    name: ESP-IDF build (esp32c3)
+  test:
+    name: pytest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: espressif/esp-idf-ci-action@v1.2.0
+      - uses: actions/setup-python@v5
         with:
-          esp_idf_version: ${{ env.IDF_VERSION }}
-          target: esp32c3
-          path: .
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      # Exit code 5 means that pytest found no tests. That is a pass until tests exist.
+      - run: pytest scripts/ || [ $? -eq 5 ]
 
-  # TODO: add a test job once test/ holds host unit tests for pulse8 framing.
+  build:
+    name: ESPHome compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .esphome
+          key: esphome-${{ hashFiles('requirements.txt', 'PlumCec.yaml', 'components/**') }}
+          restore-keys: esphome-
+      - name: Write dummy secrets
+        run: |
+          cat > secrets.yaml <<YAML
+          wifi_ssid: "CiNetwork"
+          wifi_password: "CiPassword123"
+          fallback_ap_password: "CiFallback123"
+          api_key: "$(openssl rand -base64 32)"
+          YAML
+      - run: esphome compile PlumCec.yaml
 
   claude-review:
     name: Automated review
@@ -47,7 +76,7 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@e4a6faad497d33dbc7144135c75e41f82f0bf6c0 # v1
         if: ${{ env.ANTHROPIC_API_KEY != '' }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

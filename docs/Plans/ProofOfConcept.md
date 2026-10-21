@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Step 1 in progress.
+**Status**: approved 2026-10-19. Step 1 done 2026-10-20. Step 2 in progress.
 
 ## Read this first (every step)
 
@@ -485,3 +485,4 @@ approve each PR before you open it.
 - 2026-10-19: first draft from the design session.
 - 2026-10-19: adversarial review fixes. Broadcast TX results and one bus attempt for each request (C1). Attached and Detached handover, invariant 8 (C2). Step 9 split into 9a, 9b and 9c, with no RMT TX. Hardware timing probe on GPIO4. ADR 0005. Reference sources moved into hardware `_resources/Research/`. T4 by hand with `systemd-run`. Shutdown unit and controller wake in step 11. Required checks moved to step 2. Host sleep settings applied. Estimate 36 h → 60 h.
 - 2026-10-19: owner approved the plan and the GPIO4 jumper. Repos are public from step 1, because a free account has no rulesets on a private repo. Commits keep the Gmail author address, as in the other Plum repos.
+- 2026-10-20: step 2. OTA uses `encryption: {}` (the API key) and not a password, because ESPHome 2026.9.1 warns that a password wastes flash and RAM. The `.clang-format` and `clang-format` 13.0.1 come from ESPHome, so the CEC code keeps the upstream format for step 13.
