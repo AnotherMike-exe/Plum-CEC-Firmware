@@ -1,0 +1,54 @@
+# Plum-CEC Adapter on the ESP32-C3-DevKitC-02 bench board.
+# Secrets come from secrets.yaml (git-ignored). Copy secrets.example.yaml to start.
+
+esphome:
+  name: plum-cec
+  friendly_name: Plum-CEC
+
+esp32:
+  board: esp32-c3-devkitc-02
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+# UART0 only. USB Serial/JTAG (GPIO18/19) carries Pulse-Eight bytes (invariant 1).
+# The secondary console on USB Serial/JTAG is still on here. Step 4 removes it.
+logger:
+  hardware_uart: UART0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # The CEC path must not wait for a WiFi modem wake.
+  power_save_mode: none
+  ap:
+    ssid: Plum-CEC Fallback
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_key
+
+# OTA uses the API encryption key. It needs no password of its own.
+ota:
+  - platform: esphome
+    encryption: {}
+
+# Status LED: the on-board WS2812 on GPIO8. It takes one RMT TX channel.
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_led
+    name: Status LED
+    pin:
+      number: GPIO8
+      # GPIO8 is a strapping pin. The devkit wires the LED to it, and the LED does not pull it low.
+      ignore_strapping_warning: true
+    num_leds: 1
+    chipset: WS2812
+    channel_colors: GRB

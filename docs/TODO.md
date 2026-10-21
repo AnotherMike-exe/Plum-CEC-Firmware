@@ -10,21 +10,18 @@ Anything a user would ask for goes to GitHub instead:
 
 ## Now
 
-- [ ] M0: install ESP-IDF v5.5 and flash the scaffold to the devkit
+The M0 to M6 plan is in `docs/Plans/ProofOfConcept.md`. Its step list is the work queue.
 
 ## Next
 
-- [ ] M1: flash esphome-native-hdmi-cec and record the TV behavior
-- [ ] M2: Pulse-Eight stub on UART0 (firmware version < 2, accept all commands)
-- [ ] Add host unit tests for `pulse8` framing and escaping in `test/`
+- [ ] Add host unit tests for `pulse8` framing and escaping in `test/` (plan step 7)
 
 ## Someday
 
-- [ ] Check the license of esphome-native-hdmi-cec before code reuse
+- [ ] Upstream PRs to ESPHome (plan step 13, owner approval for each PR)
 
 ## Scaffold gaps
 
-- [ ] .github/workflows/Review.yml — no test job until `test/` holds tests
-- [ ] .github/workflows/Review.yml — confirm the ESP-IDF version matches the local toolchain
+- [ ] .github/workflows/Review.yml — the pytest job passes with no tests until tests exist
 - [ ] scripts/ — udev rule and systemd unit are untested templates; set the real serial number
 - [ ] docs/ARCHITECTURE.md — HTTP authentication is not designed

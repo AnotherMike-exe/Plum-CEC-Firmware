@@ -3,21 +3,20 @@
 From a fresh clone to a flashed board. If a step here fails, the project is wrong, not
 the reader.
 
-Target: 30 minutes on a machine that already has ESP-IDF v5.5.
+Target: 30 minutes. The first compile downloads the ESP-IDF toolchain (about 10 minutes).
 
 ## Prerequisites
 
 | Tool | Version | Check |
 |---|---|---|
-| ESP-IDF | v5.5 | `idf.py --version` |
-| clang-format | any recent | `clang-format --version` |
-| v4l-utils (PC, Linux) | any | `cec-ctl --version` |
-| linuxconsoletools (PC, Linux) | any | `which inputattach` |
+| Python | 3.12 | `python3.12 --version` |
 | git | any | `git --version` |
+| v4l-utils (Host, Linux) | any | `cec-ctl --version` |
+| linuxconsoletools (Host, Linux) | any | `which inputattach` |
 
-Install ESP-IDF from the
-[Espressif guide](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c3/get-started/).
-On CachyOS, install the PC tools with `sudo pacman -S v4l-utils libcec linuxconsoletools`.
+ESPHome installs ESP-IDF through PlatformIO. Do not install ESP-IDF on its own.
+On CachyOS, install the Host tools with `sudo pacman -S v4l-utils libcec`, and
+`linuxconsoletools` from the AUR.
 
 ## 1. Clone
 
@@ -26,33 +25,46 @@ git clone https://github.com/AnotherMike-exe/Plum-CEC-Firmware.git
 cd Plum-CEC-Firmware
 git config pull.rebase true
 mkdir -p _resources/{Examples,Research,Assets,Notes}
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
-## 2. Build
+## 2. Secrets
 
 ```bash
-. $IDF_PATH/export.sh
-idf.py set-target esp32c3
-idf.py build
+cp secrets.example.yaml secrets.yaml
+openssl rand -base64 32        # paste the result as api_key
 ```
 
-## 3. Flash and run
+Fill in every value in `secrets.yaml`. Passwords need 8 characters or more. Git ignores
+the file.
 
-Wire the bench first. The wiring is in
+## 3. Build
+
+```bash
+.venv/bin/esphome compile PlumCec.yaml
+```
+
+## 4. Flash and run
+
+Connect the devkit micro-USB to the computer. The wiring is in
 [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Hardware).
 
 ```bash
-idf.py -p /dev/ttyUSB0 flash monitor
+ls /dev/cu.*                                                    # find the bridge port
+.venv/bin/esphome run PlumCec.yaml --device /dev/cu.usbserial-10
 ```
 
-On macOS the port is `/dev/cu.usbserial-*` or `/dev/cu.SLAB_USBtoUART`.
+On Linux the port is `/dev/ttyUSB0`. After the first flash, `esphome run PlumCec.yaml`
+can update over WiFi (OTA).
 
-Working when: the monitor shows the `plum_cec` start-up log.
+Working when: the UART0 log shows `WiFi: Connected: YES` and `api: Server`, and
+`.venv/bin/esphome logs PlumCec.yaml` connects over the network.
 
-## 4. Attach on the PC (from milestone M2)
+## 5. Attach on the Host (from milestone M3)
 
 ```bash
-sudo inputattach --pulse8-cec --baud <rate> /dev/ttyUSB0
+sudo inputattach --pulse8-cec /dev/ttyACM0
 echo 2 | sudo tee /sys/module/pulse8_cec/parameters/debug
 dmesg | tail
 cec-ctl -d /dev/cec0 --playback -p 1.0.0.0
@@ -60,18 +72,20 @@ cec-ctl -d /dev/cec0 --playback -p 1.0.0.0
 
 Working when: `dmesg` shows the firmware version and `/dev/cec0` exists.
 
-## 5. Lint
+## 6. Lint and test
 
 ```bash
-clang-format --dry-run --Werror main/*.c components/*/*.c components/*/include/*.h
+find components -name '*.cpp' -o -name '*.h' | xargs .venv/bin/clang-format --dry-run --Werror
+.venv/bin/pytest scripts/
 ```
 
-CI runs the same lint and an `idf.py build`.
+CI runs the same lint, the tests and an `esphome compile` with dummy secrets.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `WPA password must be at least 8 characters long` | A placeholder in `secrets.yaml` is too short | Use 8 characters or more |
 
 Add a row the first time somebody hits a problem. A troubleshooting table written in
 advance guesses. One written from real failures does not.
@@ -82,5 +96,6 @@ advance guesses. One written from real failures does not.
 |---|---|
 | How it is built and why | `docs/ARCHITECTURE.md` |
 | How Claude should work here | `docs/CLAUDE.md` |
-| Commands, pins and topics | `docs/QUICK-REFERENCE.md` |
+| Commands, pins and interfaces | `docs/QUICK-REFERENCE.md` |
+| The bench plan | `docs/Plans/ProofOfConcept.md` |
 | What it does, for a user | `README.md` |
