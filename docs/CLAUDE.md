@@ -29,8 +29,8 @@ outline is in `_resources/Notes/cec-adapter-overview.md`.
 ```
 PlumCec.yaml              the ESPHome configuration for the Adapter
 secrets.example.yaml      template for secrets.yaml (git-ignored)
-components/               ESPHome external components (empty until step 4)
-test/                     host unit tests (none yet)
+components/               ESPHome external components (pulse8/ holds the plain C++ Pulse-Eight core)
+test/                     host unit tests (CMake, doctest)
 scripts/                  udev rule and systemd unit templates for the PC
 docs/                     every document except README.md
 _resources/               dev references, never in git
@@ -45,6 +45,7 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt   # one ti
 .venv/bin/esphome logs PlumCec.yaml                                      # logs over WiFi
 find components -name '*.cpp' -o -name '*.h' | xargs .venv/bin/clang-format --dry-run --Werror
 .venv/bin/pytest scripts/
+cmake -S test -B build/test && cmake --build build/test && ctest --test-dir build/test --output-on-failure   # host unit tests
 ```
 
 ## Conventions

@@ -37,6 +37,18 @@ jobs:
       # Exit code 5 means that pytest found no tests. That is a pass until tests exist.
       - run: pytest scripts/ || [ $? -eq 5 ]
 
+  host-test:
+    name: host tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S test -B build/test
+      - name: Build
+        run: cmake --build build/test --parallel
+      - name: Run the tests
+        run: ctest --test-dir build/test --output-on-failure
+
   build:
     name: ESPHome compile
     runs-on: ubuntu-latest
