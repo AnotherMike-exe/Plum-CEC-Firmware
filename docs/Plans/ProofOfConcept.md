@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Step 1 done 2026-10-20. Step 2 in progress.
+**Status**: approved 2026-10-19. Steps 1 and 2 done 2026-10-20. Steps 3 and 7 in progress.
 
 ## Read this first (every step)
 
@@ -38,10 +38,11 @@ These files hold the decisions. A step brief does not repeat them.
 | Host | CachyOS, KDE Plasma 6.7 Wayland, systemd 262, RTX 2080 (open module). SSH with key login and passwordless `sudo -n`. The address and user are in hardware `_resources/Notes/BenchHost.md` (not in git). Never use or store the password. |
 | Host sleep state | Never idles to sleep, never blanks or locks. Manual suspend goes to S3 (`deep`). Undo: `sudo bash ~/plumcec/undo_root.sh` and the `.bak-plumcec` files. |
 | Host network | WiFi only. Wake-on-LAN is set on `enp42s0` but needs a cable. |
-| Host packages | `libcec` not installed. `inputattach` comes from the AUR (`linuxconsoletools`). |
+| Host packages | `v4l-utils` 1.32.0 and `libcec` 8.1.7 from pacman. `inputattach` 1.8.1 built from the upstream tarball into `/usr/local/bin`, because the AUR PKGBUILD has no build steps. The login shell is fish. |
 | Mac | Builds and flashes. Its micro-USB cable gives power and the UART0 console. |
 | Adapter to Host | Native USB (GPIO18 D−, GPIO19 D+) through a USB breakout, VBUS not connected |
-| CEC wiring | GPIO10 to HDMI pin 13, GND to HDMI pin 17. HDMI pins 18 and 19 never connected. |
+| CEC wiring | GPIO10 to HDMI pin 13 (breakout header `CEC`), GND to HDMI pin 17 (header `DDC_GND`). HDMI pins 18 and 19 (`+5V`, `HP_DET`) never connected. |
+| HDMI breakout | `04-JVD0001-01 Rev. 1A`, male J1 to female J2, 8-pin header. Photos in hardware `Breadboard/`. |
 | Timing probe | GPIO4 jumpered to GPIO10, read by an RMT RX channel (step 6). Owner approved 2026-10-19. |
 | Wake device | Steam Controller Puck `28de:1304` on the Host. udev sets `power/wakeup=enabled`. |
 
@@ -188,12 +189,12 @@ physical work. You give a short numbered runbook in strict STE, and you check th
 over SSH. The Host sleep settings are already done (see Bench facts).
 
 **Tasks**:
-1. Owner: measure the HDMI breakout. Pins 13 and 17 must pass through, end to end. Pins 18 and 19 stay free.
+1. Owner: measure the HDMI breakout (`04-JVD0001-01 Rev. 1A`, header map in hardware `docs/BenchWiring.md`). Header `CEC` and `DDC_GND` must not short. Header `HP_DET` (pin 19) and `+5V` (pin 18) stay free and taped.
 2. Owner: make sure that GPIO4 and GPIO10 are on the devkit header.
-3. Owner: wire GPIO10 to pin 13 and GND to pin 17. Wire the jumper GPIO4 to GPIO10. Wire the USB breakout D− to GPIO18 and D+ to GPIO19, with VBUS not connected. Connect the breakout GND to the devkit GND.
+3. Owner: wire GPIO10 to header `CEC` (pin 13) and GND to header `DDC_GND` (pin 17). Wire the jumper GPIO4 to GPIO10. Wire the USB breakout D− to GPIO18 and D+ to GPIO19, with VBUS not connected. Connect the breakout GND to the devkit GND.
 4. Owner, on the TV: turn on BRAVIA Sync. Turn off Wake-up on signal and Idle TV standby. Record the menu values.
 5. Owner, in the Host BIOS: ErP off, wake from S3 by USB on. Optional: connect a network cable for Wake-on-LAN.
-6. You, over SSH: install `v4l-utils` and `libcec` with `sudo -n pacman -S --needed`. Install `linuxconsoletools` from the AUR with the AUR helper on the Host (`paru` or `yay`, check which one exists). Then check `inputattach --help | grep -i pulse8`, `modinfo pulse8-cec` and `uname -r`.
+6. You, over SSH: done 2026-10-20 (see Bench facts). Check again with `inputattach --help | grep -i pulse8`, `modinfo pulse8-cec` and `uname -r`.
 7. Update hardware `docs/BenchWiring.md` (the GPIO4 jumper, the USB breakout GND, the Mac as power and console) and `docs/TODO.md`. Add `docs/TvSettings.md` with the TV menu values and `docs/HostSetup.md` with the sleep settings from `~/plumcec/` on the Host.
 
 **Verify**: continuity results and photos in `Breadboard/`. The Host has `cec-ctl`,
@@ -486,3 +487,4 @@ approve each PR before you open it.
 - 2026-10-19: adversarial review fixes. Broadcast TX results and one bus attempt for each request (C1). Attached and Detached handover, invariant 8 (C2). Step 9 split into 9a, 9b and 9c, with no RMT TX. Hardware timing probe on GPIO4. ADR 0005. Reference sources moved into hardware `_resources/Research/`. T4 by hand with `systemd-run`. Shutdown unit and controller wake in step 11. Required checks moved to step 2. Host sleep settings applied. Estimate 36 h → 60 h.
 - 2026-10-19: owner approved the plan and the GPIO4 jumper. Repos are public from step 1, because a free account has no rulesets on a private repo. Commits keep the Gmail author address, as in the other Plum repos.
 - 2026-10-20: step 2. OTA uses `encryption: {}` (the API key) and not a password, because ESPHome 2026.9.1 warns that a password wastes flash and RAM. The `.clang-format` and `clang-format` 13.0.1 come from ESPHome, so the CEC code keeps the upstream format for step 13.
+- 2026-10-20: step 3. The breakout is `04-JVD0001-01 Rev. 1A` with a labeled 8-pin header, so the wiring uses the header labels. The Host has no AUR helper, and the AUR `linuxconsoletools` PKGBUILD has no build steps, so `inputattach` comes from the upstream tarball.
