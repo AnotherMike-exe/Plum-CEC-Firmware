@@ -84,8 +84,8 @@ void Pulse8Core::handle_message_(std::span<const uint8_t> payload) {
       ok = n == 2;
       if (ok) {
         const uint16_t mask = (args[0] << 8) | args[1];
-        this->bus_.set_ack_mask(mask);
-        // The driver sends a single bit or 0 (driver lines 513 to 514). The core takes the lowest bit.
+        // The driver sends a single bit or 0 (driver lines 513 to 514). The core takes the lowest bit
+        // below 15, and gives the bus only that bit. An ACK on 15 rejects every broadcast.
         this->identity_.logical_address = LOGICAL_ADDRESS_INVALID;
         for (uint8_t la = 0; la < LOGICAL_ADDRESS_BROADCAST; la++) {
           if (mask & (1u << la)) {
@@ -93,6 +93,8 @@ void Pulse8Core::handle_message_(std::span<const uint8_t> payload) {
             break;
           }
         }
+        const uint8_t la = this->identity_.logical_address;
+        this->bus_.set_ack_mask(la == LOGICAL_ADDRESS_INVALID ? 0 : static_cast<uint16_t>(1u << la));
         // A new ACK mask starts a new configuration.
         this->device_type_set_ = false;
         this->physical_address_set_ = false;
