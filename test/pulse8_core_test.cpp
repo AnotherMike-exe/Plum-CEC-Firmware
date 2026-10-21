@@ -223,6 +223,22 @@ TEST_CASE("SET_ACK_MASK goes to the bus and sets the logical address") {
   CHECK(f.core.kernel_identity().logical_address == 11);
 }
 
+TEST_CASE("SET_ACK_MASK gives the bus one bit and never bit 15") {
+  Fixture f;
+  // Bit 15 is the broadcast address. An ACK on it rejects every broadcast.
+  f.command({MSGCODE_SET_ACK_MASK, 0x80, 0x00});
+  CHECK(f.bus.ack_masks.back() == 0x0000);
+  CHECK(f.core.kernel_identity().logical_address == LOGICAL_ADDRESS_INVALID);
+  f.command({MSGCODE_SET_ACK_MASK, 0x80, 0x10});
+  CHECK(f.bus.ack_masks.back() == 0x0010);
+  CHECK(f.core.kernel_identity().logical_address == 4);
+  // More than one bit: the core keeps the lowest bit only.
+  f.command({MSGCODE_SET_ACK_MASK, 0xFF, 0xFF});
+  CHECK(f.bus.ack_masks.back() == 0x0001);
+  CHECK(f.core.kernel_identity().logical_address == 0);
+  CHECK(f.messages.back() == accepted(MSGCODE_SET_ACK_MASK));
+}
+
 TEST_CASE("the driver configuration sequence makes a complete Kernel identity") {
   Fixture f;
   // pulse8_cec_adap_log_addr for Playback 1 at 1.0.0.0 (driver lines 504 to 624).
