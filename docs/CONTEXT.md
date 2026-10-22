@@ -19,6 +19,22 @@ _Avoid_: computer, client
 The display at the other end of the HDMI cable. It is logical address 0 on the CEC bus.
 _Avoid_: sink, display, monitor
 
+## HDMI
+
+**Source**:
+The HDMI device on the input side of the Adapter. It is often the Host, but it can be a
+different device, for example a console, when a charger powers the Adapter.
+_Avoid_: input device, player
+
+**Passthrough**:
+The HDMI path through the Adapter, as plain copper from the plug to the receptacle. It
+works with or without power.
+_Avoid_: bypass, loop-through
+
+**Tap**:
+A low-speed HDMI line that the Adapter connects to through isolation: CEC, SCL or SDA.
+_Avoid_: sniff line, probe
+
 ## Front-ends
 
 **USB front-end**:
@@ -48,3 +64,22 @@ The Identity that the Host kernel sets while Attached.
 The Identity that the Adapter uses while Detached. It starts as the last Kernel
 identity, and the Network front-end can change it.
 _Avoid_: fallback identity, stored identity
+
+**Physical address**:
+The address of an HDMI input on the TV (for example `1.0.0.0`). The Adapter reads it
+from the EDID when the Source reads the EDID, and shares it with the Source.
+_Avoid_: port number, PA
+
+**Logical address**:
+The CEC bus address (0 to 15) that a device claims by polling. 15 is Unregistered.
+_Avoid_: LA, CEC ID
+
+**Proxy**:
+The role of the Adapter when the Source has no CEC. The Adapter claims a logical address
+and acts as the CEC device for the Source.
+_Avoid_: host mode, active mode
+
+**Guest**:
+The role of the Adapter when the Source has its own CEC. The Adapter claims no logical
+address, and sends as Unregistered or as the Source.
+_Avoid_: listen mode, passive mode
