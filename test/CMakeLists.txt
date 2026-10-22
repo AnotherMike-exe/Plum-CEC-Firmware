@@ -27,6 +27,12 @@ target_include_directories(pulse8_core_test PRIVATE ${COMPONENTS_DIR})
 target_link_libraries(pulse8_core_test PRIVATE doctest::doctest_with_main)
 target_compile_options(pulse8_core_test PRIVATE -Wall -Wextra -Werror)
 
+add_executable(ack_rules_test ack_rules_test.cpp)
+target_include_directories(ack_rules_test PRIVATE ${COMPONENTS_DIR})
+target_link_libraries(ack_rules_test PRIVATE doctest::doctest_with_main)
+target_compile_options(ack_rules_test PRIVATE -Wall -Wextra -Werror)
+
 enable_testing()
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(pulse8_core_test)
+doctest_discover_tests(ack_rules_test)
