@@ -22,6 +22,7 @@ external_components:
 # M1 bench tests. Plan step 9c removes this package.
 packages:
   m1_bench: !include packages/m1_bench.yaml
+  timing_probe: !include packages/timing_probe.yaml
 
 # UART0 only. USB Serial/JTAG (GPIO18/19) carries Pulse-Eight bytes (invariant 1).
 logger:
