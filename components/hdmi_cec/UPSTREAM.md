@@ -35,5 +35,7 @@ These are new behavior, not compile fixes. Offer them upstream at plan step 13.
 | `hdmi_cec.h`, `hdmi_cec.cpp` | `set_ack_mask()` and `clear_ack_mask()`: ACK every destination in a 16-bit mask, never a broadcast | 9a |
 | `hdmi_cec.h`, `hdmi_cec.cpp` | `add_frame_listener()`: every valid frame, our own and polls too, with an `is_own` flag | 9a |
 | `hdmi_cec.h` | `Frame` has a flags byte (own, for automations). A queue grows from 70 to 74 bytes | 9a |
+| `cec_tx.h`, `hdmi_cec.h`, `hdmi_cec.cpp` | ESP32 TX: `submit()` puts a `TxRequest` in a FreeRTOS queue. A TX task starts each frame, and a second gptimer drives every edge and samples each bit at 1050 µs. The result (`TxResult`) goes to a callback. `send()` uses it with 8 attempts. Other platforms keep the `loop()` TX | 9b |
+| `hdmi_cec.cpp` | Read-back: the receive interrupt records our own bytes, and a difference from the sent bytes gives `LINE_ERROR` | 9b |
 
-Without a mask and without a listener, the behavior is the same as upstream.
+Without a mask and without a listener, the receive behavior is the same as upstream. On the ESP32, the TX is new.
