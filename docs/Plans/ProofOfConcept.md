@@ -16,14 +16,17 @@ These files hold the decisions. A step brief does not repeat them.
 
 | File | Holds |
 |---|---|
-| `docs/CONTEXT.md` (both repos) | Glossary: Adapter, Host, TV, USB front-end, Network front-end, Attached, Detached, Identity, Kernel identity, Default identity |
+| `docs/CONTEXT.md` (both repos) | Glossary: Adapter, Host, TV, Source, Passthrough, Tap, USB front-end, Network front-end, Attached, Detached, Identity, Kernel identity, Default identity, Physical address, Logical address, Proxy, Guest |
 | Firmware `docs/adr/0001` | One Identity for both front-ends |
 | Firmware `docs/adr/0002` | ESPHome external components, stable release pinned, S3 fallback, native API plus optional MQTT |
 | Firmware `docs/adr/0003` | GPLv3 for C++, MIT for Python and YAML |
 | Firmware `docs/adr/0004` | Local copy of the ESPHome `hdmi_cec` component, same name |
 | Firmware `docs/adr/0005` | Sony workarounds (Host daemon while Attached, Adapter while Detached), optional "TV off, Host suspends" |
-| Hardware `docs/adr/0001` | Separate power for the Adapter, native USB is data only |
+| Firmware `docs/adr/0006` | Proxy or Guest role, physical address read passively from the EDID, logical address claimed by polling |
+| Hardware `docs/adr/0001` | Superseded by ADR 0003 |
 | Hardware `docs/adr/0002` | ESP32-S3 is the fallback MCU |
+| Hardware `docs/adr/0003` | One USB-C port for power and data |
+| Hardware `docs/adr/0004` | Passive HDMI 2.1 passthrough PCB, isolated taps on CEC, SCL and SDA, no repeater |
 | Hardware `_resources/Research/pulse8-cec.c` (not in git) | The Linux driver. It is the Pulse-Eight spec. |
 | Hardware `_resources/Research/EsphomeHdmiCecDev/` (not in git) | The ESPHome `dev` `hdmi_cec` component at merge commit `41e82b029553810f581a4de0ef2232c669fb48ab` (PR esphome/esphome#9189) |
 | Hardware `_resources/Notes/cec-adapter-overview.md` (not in git) | Pulse-Eight protocol notes, original test plan |
@@ -96,6 +99,7 @@ records bench results has no code to revert.
             └─ 11 M6 Host integration (parallel with 10)
    10 + 11 ─► 12 M6 end-to-end scenarios and docs
    12 ─► 13 Upstream PRs to ESPHome (owner approval)
+   9c ─► 14 PCB design inputs (bench, parallel with 10 and 11)
 ```
 
 **Parallel**: step 7 runs while steps 3 to 6 run. 9a and 9b can be coded at the same time
@@ -120,8 +124,9 @@ a time, because there is one Adapter.
 | 11 | M6 | FW | `feat/host-integration` | default | Host | 8 h |
 | 12 | M6 | both | `bench/m6-end-to-end` | default | yes | 3 h |
 | 13 | — | upstream | fork branches | default | no | 2 h |
+| 14 | M8 input | both | `PcbInputs` | default | yes | 5 h |
 
-Total: about 60 h of work, across about 12 sessions.
+Total: about 65 h of work, across about 13 sessions.
 
 ---
 
@@ -398,15 +403,16 @@ Detached, the Adapter uses the Default identity. ADR 0005: while Detached, the A
 does the Sony workarounds itself. Invariant 8: while Attached, only the kernel answers.
 
 **Tasks**:
-1. Add an Identity holder. Seed the Default identity from YAML (`1.0.0.0`, logical address 4, Playback, OSD name `Plum-CEC`). Save it in ESPHome preferences (flash).
-2. Copy the Kernel identity into the Default identity only when it is complete and valid (a physical address set, a logical address other than 15).
-3. Attached starts at the first Pulse-Eight command. Detached starts when `usb_serial_jtag_is_connected()` goes false, or when no `PING` or command comes for 35 s. Show it as a binary sensor.
-4. At Attached: stop the Default-identity responders, and let only `SET_ACK_MASK` set the ACK. At Detached: set the ACK to the Default identity, and start the responders (Give Physical Address, Give Device Power Status, Give OSD Name).
-5. Native API: actions `tv_on`, `tv_standby`, `active_source`, `inactive_source` and `send_raw`. Sensors for TV power, active source and Attached. A `cec_frame` event for each received frame.
-6. Frames from the Network front-end go through the same TX task as the USB front-end, with the current Identity.
-7. While Detached, do the ADR 0005 workarounds.
-8. Add `packages/mqtt.yaml`, an optional MQTT package with HA discovery.
-9. Update `docs/ARCHITECTURE.md`: Identity, Attached, front-ends.
+1. Add an Identity holder. Seed the Default identity from YAML (`1.0.0.0`, Playback, OSD name `Plum-CEC`). Save it in ESPHome preferences (flash). ADR 0006: the physical address in YAML is the fallback, and a stored EDID address (step 14) wins.
+2. ADR 0006 role: while Detached, claim the logical address by polling (4, then 8, then 11). If another device reports our physical address, take the Guest role: no claim, send as 15, and send Image View On and Active Source as the Source.
+3. Copy the Kernel identity into the Default identity only when it is complete and valid (a physical address set, a logical address other than 15).
+4. Attached starts at the first Pulse-Eight command. Detached starts when `usb_serial_jtag_is_connected()` goes false, or when no `PING` or command comes for 35 s. Show it as a binary sensor.
+5. At Attached: stop the Default-identity responders, and let only `SET_ACK_MASK` set the ACK. At Detached: set the ACK to the Default identity, and start the responders (Give Physical Address, Give Device Power Status, Give OSD Name).
+6. Native API: actions `tv_on`, `tv_standby`, `active_source`, `inactive_source` and `send_raw`. Sensors for TV power, active source and Attached. A `cec_frame` event for each received frame.
+7. Frames from the Network front-end go through the same TX task as the USB front-end, with the current Identity.
+8. While Detached, do the ADR 0005 workarounds.
+9. Add `packages/mqtt.yaml`, an optional MQTT package with HA discovery.
+10. Update `docs/ARCHITECTURE.md`: Identity, Attached, front-ends.
 
 **Verify**: actions work with the Host awake, with `inputattach` stopped, and with the
 Host asleep. In 10 minutes of network actions during `cec-ctl` traffic, there are no
@@ -473,6 +479,26 @@ approve each PR before you open it.
 
 **Exit**: PRs open. Track them in `docs/TODO.md`.
 
+## Step 14 — PCB design inputs (bench)
+
+**Context brief**: hardware ADR 0003 and ADR 0004 set the PCB design, and firmware ADR
+0006 sets the role and the addresses. These bench tests check the parts of the design that
+the earlier steps did not test. Record each result in hardware `docs/PcbInputs.md`. Ask the
+owner before each suspend, and suspend only once for each test.
+
+**Tasks**:
+1. Remote wakeup: with the Host awake, run `lsusb -v -d 303a:1001 | grep -i "remote wakeup"`. If the attribute is missing, the C3 cannot wake the Host over USB. Stop and report to the owner: the MCU choice is open again (hardware ADR 0002).
+2. HDMI mode through the breakout: run the Host at the highest TV mode for 30 min. Check the FW-55BZ40H specification first, because it probably stops at 4K60. Record any dropout. HDMI 2.1 FRL needs a different TV, so record that test as open.
+3. Isolation (only if the owner has a BSS138 level-shifter module): wire CEC through one channel, LV to 3.3 V, HV open. Run `check_timing.py` for 10 min. Then remove the Adapter power, and make sure that the TV and the soundbar still exchange CEC frames.
+4. Passive EDID read: wire `DDC_CLK` and `DDC_DATA` through two more module channels. Add a bench sniffer that logs the bytes at address 0x50 when the Host reads the EDID (unplug and plug in the Host HDMI cable). Take the physical address from the HDMI vendor block, and compare with `1.0.0.0`.
+5. Host port power in S3: move the devkit power to a Host USB port, suspend once, and check if the Adapter stays on WiFi. Repeat for the ports that the owner chooses.
+6. Initiator 15: with `cec-ctl` on the Host as Unregistered, send Image View On, Active Source `1.0.0.0` and Standby to the TV. Record which ones the TV accepts, in hardware `docs/TvBehavior.md`.
+
+**Verify**: `docs/PcbInputs.md` has a result or "open, with the reason" for each task.
+
+**Exit**: the schematic inputs are known. A failed task 1 or 3 goes to the owner before
+any schematic work.
+
 ---
 
 ## Plan mutation protocol
@@ -496,3 +522,4 @@ approve each PR before you open it.
 - 2026-10-21: step 8. GATE B passed (`docs/Spikes/GateB.md`). The stub bus gives a NACK to polls, or the kernel finds every logical address in use. `gate_b.sh` detects an Adapter reset from the USB device number, not a UART0 boot counter. The Host port is the `/dev/serial/by-id/` path, because ttyACM0 is the Steam Controller Puck. T4 broke the Host NVIDIA display (no `nvidia-suspend` units, and `rtcwake` skips systemd), so step 11 gets task 8. T4 now keeps the Host awake 30 s in each cycle.
 - 2026-10-21: step 9a. The ACK and delivery rules are in `components/hdmi_cec/ack_rules.h`, with host tests. Frame listeners get every valid frame, our own frames and polls too. `on_message` keeps its old filter through a flag on the frame. A mask ACKs a poll from another device to a masked address, so that device learns the address is taken. The TV polls addresses 1 to 14 every 15 s, so the bench check uses the TV poll to 4. Own TX read back `4F` as `4D` once, so step 9b gets a read-back check.
 - 2026-10-21: step 9b. The ESP32 TX code is in `hdmi_cec.cpp` under `USE_ESP32`, not in `cec_tx.cpp`, because it uses the file-local bit timing constants. `cec_tx.h` holds `TxResult`. A data 0 gets no sample, because its release (1500 µs) comes after the sample point. A late timer alarm stops the frame with the line released. The gptimer interrupt and calls are in IRAM (`CONFIG_GPTIMER_ISR_IRAM_SAFE`, `CONFIG_GPTIMER_CTRL_FUNC_IN_IRAM`). The TX task clears the own-frame flag only after the last edge, so an ACKed own frame shows as own. 1 h soak: 1802 of 1802 sent, timing PASS, no reset (`docs/Spikes/TimingBaseline.md`).
+- 2026-10-22: PCB design session with the owner. New hardware ADR 0003 (one USB-C port, supersedes ADR 0001) and ADR 0004 (passive HDMI 2.1 passthrough, isolated taps on CEC, SCL and SDA, no repeater). New firmware ADR 0006 (Proxy or Guest role, physical address from the EDID). Step 10 claims the logical address and takes the role. New step 14 tests the design inputs: USB remote wakeup on the C3, the HDMI mode through the breakout, the isolation circuit, the passive EDID read, Host port power in S3, and commands from initiator 15. T4 (step 8) woke the Host with the RTC, so it did not test a wake from the Adapter.

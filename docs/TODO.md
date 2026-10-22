@@ -18,6 +18,10 @@ The M0 to M6 plan is in `docs/Plans/ProofOfConcept.md`. Its step list is the wor
 
 ## Someday
 
+- [ ] Document and test the host-state tools for hosts without USB (HASS.Agent, LNXlink,
+  the Home Assistant Companion app, System Bridge), with an HA automation that links a
+  host state to the Adapter. Later: a guide, or one app for all systems.
+
 - [ ] Upstream PRs to ESPHome (plan step 13, owner approval for each PR)
 
 ## Scaffold gaps
