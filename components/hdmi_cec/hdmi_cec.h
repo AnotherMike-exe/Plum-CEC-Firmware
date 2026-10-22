@@ -12,6 +12,8 @@
 #include "esphome/core/gpio.h"
 #include "esphome/core/helpers.h"
 
+#include "ack_rules.h"
+
 #ifdef USE_ESP32
 #include "driver/gptimer.h"
 #endif
@@ -50,7 +52,17 @@ class Frame {
   std::span<const uint8_t> bytes() const { return {this->data_.data(), this->size_}; }
   /// The bytes after the header, starting with the opcode
   std::span<const uint8_t> payload() const { return this->bytes().subspan(1); }
-  ESPHOME_ALWAYS_INLINE void clear() { this->size_ = 0; }
+  ESPHOME_ALWAYS_INLINE void clear() {
+    this->size_ = 0;
+    this->flags_ = 0;
+  }
+  /// This device sent the frame (local change, plan step 9a)
+  ESPHOME_ALWAYS_INLINE bool is_own() const { return this->flags_ & FLAG_OWN; }
+  /// The on_message automations get the frame (local change, plan step 9a)
+  ESPHOME_ALWAYS_INLINE bool for_automations() const { return this->flags_ & FLAG_FOR_AUTOMATIONS; }
+  ESPHOME_ALWAYS_INLINE void set_flags(bool own, bool for_automations) {
+    this->flags_ = (own ? FLAG_OWN : 0) | (for_automations ? FLAG_FOR_AUTOMATIONS : 0);
+  }
   /// False when the frame is full already; the bus allows no more
   ESPHOME_ALWAYS_INLINE bool push_back(uint8_t data) {
     if (this->size_ == MAX_LENGTH) {
@@ -61,8 +73,12 @@ class Frame {
   }
 
  protected:
+  static constexpr uint8_t FLAG_OWN = 1 << 0;
+  static constexpr uint8_t FLAG_FOR_AUTOMATIONS = 1 << 1;
+
   std::array<uint8_t, MAX_LENGTH> data_{};
   uint8_t size_{0};
+  uint8_t flags_{0};
 };
 
 /// A queue of frames between one producer and one consumer, for instance the receive interrupt and
@@ -105,6 +121,16 @@ class HDMICEC : public Component {
 
   void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
   void set_monitor_mode(bool monitor_mode) { this->monitor_mode_ = monitor_mode; }
+  /// ACK every destination whose bit is set; bit 15 (broadcast) is ignored. Overrides the single
+  /// address until clear_ack_mask() (local change, plan step 9a)
+  void set_ack_mask(uint16_t mask) { atomic_set<uint32_t>(this->ack_mask_, mask); }
+  void clear_ack_mask() { atomic_set<uint32_t>(this->ack_mask_, NO_ACK_MASK); }
+  /// Called in loop() with every valid frame on the bus, header-only polls and our own frames too,
+  /// and whether this device sent it (local change, plan step 9a). Frames queue only once a listener exists
+  template<typename F> void add_frame_listener(F &&listener) {
+    this->frame_listeners_.add(std::forward<F>(listener));
+    atomic_set(this->deliver_all_, true);
+  }
 #ifdef HDMI_CEC_MESSAGE_CALLBACK_COUNT
   /// Called with the initiator, the destination and the payload (opcode first) of every received
   /// frame; the payload is only valid during the call
@@ -168,7 +194,7 @@ class HDMICEC : public Component {
   }
 
   static constexpr size_t QUEUE_SIZE = 4;
-  // Each queue is 70 bytes, so two single-byte fields follow each to fill the alignment gap
+  // Each queue is 74 bytes, so two single-byte fields follow each to fill the alignment gap
   FrameRingBuffer<QUEUE_SIZE> frames_queue_;  // received, interrupt to loop()
   uint8_t recv_bit_counter_{0};
   uint8_t recv_byte_{0};
@@ -179,6 +205,7 @@ class HDMICEC : public Component {
   StaticCallbackManager<HDMI_CEC_MESSAGE_CALLBACK_COUNT, void(uint8_t, uint8_t, std::span<const uint8_t>)>
       message_callbacks_;
 #endif
+  CallbackManager<void(const Frame &, bool)> frame_listeners_;
   InternalGPIOPin *pin_;
   ISRInternalGPIOPin isr_pin_;
 #ifdef USE_ESP32
@@ -189,17 +216,19 @@ class HDMICEC : public Component {
 #endif
 
   // The word-sized fields come first and the single-byte ones form one run, so nothing is padded
-  std::atomic<uint32_t> last_edge_us_{0};  // the bus is busy until this is some time ago; interrupt writes
-  Frame *recv_frame_{nullptr};             // interrupt only; null when the queue was full or the frame too long
-  uint32_t last_falling_edge_us_{0};       // interrupt only
-  uint32_t last_attempt_us_{0};            // loop() only; a refused start bit drives no edge, so it is timed here
-  uint16_t required_idle_period_{0};       // loop() only
+  std::atomic<uint32_t> last_edge_us_{0};        // the bus is busy until this is some time ago; interrupt writes
+  std::atomic<uint32_t> ack_mask_{NO_ACK_MASK};  // the interrupt reads it; one word, so one atomic load
+  Frame *recv_frame_{nullptr};                   // interrupt only; null when the queue was full or the frame too long
+  uint32_t last_falling_edge_us_{0};             // interrupt only
+  uint32_t last_attempt_us_{0};                  // loop() only; a refused start bit drives no edge, so it is timed here
+  uint16_t required_idle_period_{0};             // loop() only
 
   // Shared with the interrupt. The tally of our own frame is written by the interrupt while
   // transmitting_ is set and no end of message has passed yet; loop() reads it once eom_received_
   // says the frame is over
   std::atomic<bool> eom_received_{false};  // set for every frame, ours or not
   std::atomic<uint8_t> dropped_frames_{0};
+  std::atomic<bool> deliver_all_{false};  // a frame listener exists, so every valid frame is queued
   uint8_t n_bytes_received_{0};
   uint8_t n_acks_received_{0};
   bool transmitting_{false};

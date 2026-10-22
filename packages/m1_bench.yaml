@@ -60,3 +60,61 @@ button:
       - hdmi_cec.send:
           destination: 0x0
           data: [0x9D, 0x10, 0x00]
+
+# Plan step 9a: ACK mask and frame listener tests.
+select:
+  - platform: template
+    name: CEC ACK mask
+    id: cec_ack_mask
+    optimistic: true
+    options:
+      - Address 4 only
+      - Mask 0x0010
+      - Mask 0x0000
+    initial_option: Address 4 only
+    set_action:
+      - lambda: |-
+          if (x == "Mask 0x0010") {
+            id(cec).set_ack_mask(0x0010);
+          } else if (x == "Mask 0x0000") {
+            id(cec).set_ack_mask(0x0000);
+          } else {
+            id(cec).clear_ack_mask();
+          }
+
+globals:
+  - id: listener_other
+    type: uint32_t
+  - id: listener_own
+    type: uint32_t
+  - id: listener_polls
+    type: uint32_t
+
+esphome:
+  on_boot:
+    priority: 800
+    then:
+      - lambda: |-
+          id(cec).add_frame_listener([](const hdmi_cec::Frame &frame, bool own) {
+            if (frame.size() == 1) {
+              id(listener_polls) += 1;
+            }
+            if (own) {
+              id(listener_own) += 1;
+            } else {
+              id(listener_other) += 1;
+            }
+          });
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          if (id(listener_other) + id(listener_own) == 0) {
+            return;
+          }
+          ESP_LOGI("bench", "listener other=%" PRIu32 " own=%" PRIu32 " polls=%" PRIu32, id(listener_other), id(listener_own),
+                   id(listener_polls));
+          id(listener_other) = 0;
+          id(listener_own) = 0;
+          id(listener_polls) = 0;

@@ -77,11 +77,15 @@ void HDMICEC::loop() {
   if (const Frame *frame = this->frames_queue_.front()) {
 #ifdef ESPHOME_LOG_HAS_DEBUG
     char line[format_hex_pretty_size(Frame::MAX_LENGTH)];
-    ESP_LOGD(TAG, "Received: %s", format_hex_pretty_to(line, frame->bytes().data(), frame->size()));
+    ESP_LOGD(TAG, "Received: %s%s", format_hex_pretty_to(line, frame->bytes().data(), frame->size()),
+             frame->is_own() ? LOG_STR_LITERAL(" (own)") : LOG_STR_LITERAL(""));
 #endif
 #ifdef HDMI_CEC_MESSAGE_CALLBACK_COUNT
-    this->message_callbacks_.call(frame->initiator_addr(), frame->destination_addr(), frame->payload());
+    if (frame->for_automations()) {
+      this->message_callbacks_.call(frame->initiator_addr(), frame->destination_addr(), frame->payload());
+    }
 #endif
+    this->frame_listeners_.call(*frame, frame->is_own());
     this->frames_queue_.pop_front();
   }
   // A frame being sent stays at the front of the queue until its attempts are over
@@ -396,11 +400,11 @@ void IRAM_ATTR HDMICEC::gpio_isr_() {
     case ReceiverState::RECEIVER_STATE_WAITING_FOR_EOM:
       this->recv_eom_ = value;
       // A frame for us is acknowledged on the next bit, unless there is no room for it (so its
-      // initiator retries) or it is our own, which includes a polling message from a device
-      // claiming our logical address. A polling message for us (header only) needs no room, and
-      // goes unacknowledged only when nobody holds the address
+      // initiator retries) or it is our own. wants_ack() decides "for us": the ACK mask, or the
+      // single address. A polling message for us (header only) needs no room, and goes
+      // unacknowledged only when nobody holds the address
       if (!this->monitor_mode_ && !own_frame && (this->recv_frame_ != nullptr || (value && this->recv_length_ == 1)) &&
-          (this->recv_header_ & 0xf) == this->address_ && (this->recv_header_ >> 4) != this->address_) {
+          wants_ack(this->recv_header_, atomic_get(this->ack_mask_), this->address_)) {
         this->recv_ack_queued_ = true;
       }
       this->receiver_state_ = ReceiverState::RECEIVER_STATE_WAITING_FOR_ACK;
@@ -420,17 +424,16 @@ void IRAM_ATTR HDMICEC::gpio_isr_() {
         break;
       }
       atomic_set(this->eom_received_, true);  // publishes the tally above to loop()
-      // The application only gets frames that are not our own and not a polling message (header
-      // only), which the acknowledge answered already, and that are addressed to us unless
-      // promiscuous
-      const uint8_t destination = this->recv_header_ & 0xf;
-      const bool wanted = this->recv_length_ > 1 && !own_frame && (this->recv_header_ >> 4) != this->address_ &&
-                          (this->promiscuous_mode_ || destination == 0xf || destination == this->address_);
-      if (!wanted) {
+      // The automations get the frames for_automations() allows. A frame listener gets every
+      // valid frame, polls and our own frames too
+      const bool automations =
+          for_automations(this->recv_header_, this->recv_length_, own_frame, this->address_, this->promiscuous_mode_);
+      if (!automations && !atomic_get(this->deliver_all_)) {
         // nothing to deliver
       } else if (this->recv_frame_ == nullptr) {
         atomic_set<uint8_t>(this->dropped_frames_, atomic_get(this->dropped_frames_) + 1);
       } else {
+        this->recv_frame_->set_flags(own_frame, automations);
         this->frames_queue_.push_back();
         this->enable_loop_soon_any_context();
       }

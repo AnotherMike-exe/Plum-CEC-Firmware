@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5, 6 and 8 done, GATE A and GATE B passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
+**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5, 6, 8 and 9a done, GATE A and GATE B passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
 
 ## Read this first (every step)
 
@@ -366,8 +366,9 @@ a line sample in each initiator bit, and RMT TX cannot do that.
 3. Results: success, NACK (directed only), line error, arbitration lost. For a broadcast, an ACK low is not a failure.
 4. Wait for the signal-free time that the request gives.
 5. Bench: send each M1 button frame through the new path. Run `cec_probe`, and `check_timing.py` on our own TX.
+6. Compare the bytes that the receiver reads back with the bytes sent. A difference is a line error. Step 9a saw `4F:84:10:00:04` read back as `4D:84:10:00:04`, and the old path reported success.
 
-**Verify**: `check_timing.py` passes on our own TX. No WDT reset in 1 h of sends, one each 2 s.
+**Verify**: `check_timing.py` passes on our own TX. No WDT reset in 1 h of sends, one each 2 s. No read-back difference in that hour.
 
 **Exit**: TX does not block `loop()`, and its timing is in the spec windows.
 
@@ -493,3 +494,4 @@ approve each PR before you open it.
 - 2026-10-21: step 5. The `hdmi_cec` copy needs 4 small changes for ESPHome 2026.9.1 (`components/hdmi_cec/UPSTREAM.md`). The M1 package has a runtime switch for monitor mode, so the button tests need no reflash. The Give Physical Address reply must match `destination: 4`, because promiscuous mode also passes frames for other devices. Host sleep frame: Standby to TV. Many sends need 2 to 6 attempts, so step 6 checks the bit timing. Results in hardware `docs/TvBehavior.md`.
 - 2026-10-21: step 6. `cec_probe` finds own TX from the decoded frame header (initiator 4), not from a flag in `hdmi_cec`, so `hdmi_cec` does not change. The TV frames pass. Own TX fails: some levels stretch by 0.4 to 0.9 ms, because `loop()` TX is preempted. Step 9b fixes it. Baseline in `docs/Spikes/TimingBaseline.md`.
 - 2026-10-21: step 8. GATE B passed (`docs/Spikes/GateB.md`). The stub bus gives a NACK to polls, or the kernel finds every logical address in use. `gate_b.sh` detects an Adapter reset from the USB device number, not a UART0 boot counter. The Host port is the `/dev/serial/by-id/` path, because ttyACM0 is the Steam Controller Puck. T4 broke the Host NVIDIA display (no `nvidia-suspend` units, and `rtcwake` skips systemd), so step 11 gets task 8. T4 now keeps the Host awake 30 s in each cycle.
+- 2026-10-21: step 9a. The ACK and delivery rules are in `components/hdmi_cec/ack_rules.h`, with host tests. Frame listeners get every valid frame, our own frames and polls too. `on_message` keeps its old filter through a flag on the frame. A mask ACKs a poll from another device to a masked address, so that device learns the address is taken. The TV polls addresses 1 to 14 every 15 s, so the bench check uses the TV poll to 4. Own TX read back `4F` as `4D` once, so step 9b gets a read-back check.
