@@ -19,6 +19,10 @@ external_components:
       type: local
       path: components
 
+# M1 bench tests. Plan step 9c removes this package.
+packages:
+  m1_bench: !include packages/m1_bench.yaml
+
 # UART0 only. USB Serial/JTAG (GPIO18/19) carries Pulse-Eight bytes (invariant 1).
 logger:
   hardware_uart: UART0

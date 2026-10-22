@@ -1,0 +1,62 @@
+# M1 bench tests (plan step 5). Step 9c deletes this package.
+# Address 4 is Playback 1. Physical address 1.0.0.0 is TV HDMI 1.
+
+hdmi_cec:
+  id: cec
+  pin: GPIO10
+  address: 4
+  promiscuous_mode: true
+  # Start as a listener only: no ACK and no send. The switch below turns it off at runtime.
+  monitor_mode: true
+  on_message:
+    # Give Physical Address to us: Report Physical Address 1.0.0.0, device type Playback.
+    # Promiscuous mode also passes frames for other devices, so match the destination too.
+    - opcode: 0x83
+      destination: 4
+      then:
+        - hdmi_cec.send:
+            destination: 0xF
+            data: [0x84, 0x10, 0x00, 0x04]
+
+switch:
+  - platform: template
+    name: CEC monitor mode
+    id: cec_monitor_mode
+    optimistic: true
+    restore_mode: ALWAYS_ON
+    turn_on_action:
+      - lambda: id(cec).set_monitor_mode(true);
+    turn_off_action:
+      - lambda: id(cec).set_monitor_mode(false);
+
+button:
+  - platform: template
+    name: CEC Image View On
+    on_press:
+      - hdmi_cec.send:
+          destination: 0x0
+          data: [0x04]
+  - platform: template
+    name: CEC Active Source
+    on_press:
+      - hdmi_cec.send:
+          destination: 0xF
+          data: [0x82, 0x10, 0x00]
+  - platform: template
+    name: CEC Standby to TV
+    on_press:
+      - hdmi_cec.send:
+          destination: 0x0
+          data: [0x36]
+  - platform: template
+    name: CEC Standby broadcast
+    on_press:
+      - hdmi_cec.send:
+          destination: 0xF
+          data: [0x36]
+  - platform: template
+    name: CEC Inactive Source
+    on_press:
+      - hdmi_cec.send:
+          destination: 0x0
+          data: [0x9D, 0x10, 0x00]
