@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5 and 6 done, GATE A passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
+**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5, 6 and 8 done, GATE A and GATE B passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
 
 ## Read this first (every step)
 
@@ -323,7 +323,7 @@ native USB, so M2 and M3 are one step. The Host has no automatic re-attach yet
 **Tasks**:
 1. In `components/pulse8/`, run `Pulse8Core` on USB Serial/JTAG. Reads and writes go through a task and queues. A full TX buffer drops bytes. It never blocks `loop()`.
 2. The stub `CecBus` accepts every frame and reports `TRANSMIT_SUCCEEDED` after 50 ms. A YAML option makes it also generate one RX frame every 100 ms, for T3.
-3. On the Host: `sudo -n inputattach --pulse8-cec /dev/ttyACM0 &`. Set `/sys/module/pulse8_cec/parameters/debug` to 2.
+3. On the Host: `sudo -n inputattach --pulse8-cec <Adapter port>` (the `/dev/serial/by-id/` path, because ttyACM0 is the Steam Controller Puck). Set `/sys/module/pulse8_cec/parameters/debug` to 2.
 4. Check `dmesg` for the firmware version. Wait for `/dev/cec0`, then run `cec-ctl -d /dev/cec0 --playback -p 1.0.0.0`.
 5. Write `scripts/gate_b.sh` (run on the Host) for these tests:
    - T1: 50 attach and detach cycles, and 50 `cec-ctl` open and close cycles. Pass: no reset (boot counter on UART0).
@@ -432,7 +432,8 @@ suspend after 60 s" rule, off by default. The sleep frame comes from hardware
 5. Host daemon `scripts/plum_cec_hostd.py` (system unit). It reads `cec-ctl --monitor`. It does the ADR 0005 workarounds and the optional suspend rule. It also reads the Puck input events (evdev). If the TV is off and a controller button comes, it sends Image View On and Active Source.
 6. Add pytest tests for the daemon with recorded `cec-ctl --monitor` output and fake input events.
 7. Make sure that the Adapter (`303a:1001`) has `power/wakeup` disabled.
-8. Add `scripts/install.sh` and update hardware `docs/HostSetup.md`.
+8. NVIDIA display after resume (Gate B finding 3): enable `nvidia-suspend`, `nvidia-resume` and `nvidia-hibernate`. Check `NVreg_PreserveVideoMemoryAllocations=1`. Test with one `systemctl suspend` and the owner present. The TV must show the desktop after resume.
+9. Add `scripts/install.sh` and update hardware `docs/HostSetup.md`.
 
 **Verify**: `pytest scripts/` passes. After a reboot, `/dev/cec0` shows with no manual
 step. A suspend turns off the TV. The controller wakes the Host, and the TV wakes on HDMI 1.
@@ -491,3 +492,4 @@ approve each PR before you open it.
 - 2026-10-21: step 4. GATE A passed (`docs/Spikes/UsbSerialJtag.md`). The `sdkconfig_options` override turns off the secondary console, so no `__init__.py` hook is necessary. Step 4 ran before the end of step 3, because only the breakout measurements and the bench photo were open.
 - 2026-10-21: step 5. The `hdmi_cec` copy needs 4 small changes for ESPHome 2026.9.1 (`components/hdmi_cec/UPSTREAM.md`). The M1 package has a runtime switch for monitor mode, so the button tests need no reflash. The Give Physical Address reply must match `destination: 4`, because promiscuous mode also passes frames for other devices. Host sleep frame: Standby to TV. Many sends need 2 to 6 attempts, so step 6 checks the bit timing. Results in hardware `docs/TvBehavior.md`.
 - 2026-10-21: step 6. `cec_probe` finds own TX from the decoded frame header (initiator 4), not from a flag in `hdmi_cec`, so `hdmi_cec` does not change. The TV frames pass. Own TX fails: some levels stretch by 0.4 to 0.9 ms, because `loop()` TX is preempted. Step 9b fixes it. Baseline in `docs/Spikes/TimingBaseline.md`.
+- 2026-10-21: step 8. GATE B passed (`docs/Spikes/GateB.md`). The stub bus gives a NACK to polls, or the kernel finds every logical address in use. `gate_b.sh` detects an Adapter reset from the USB device number, not a UART0 boot counter. The Host port is the `/dev/serial/by-id/` path, because ttyACM0 is the Steam Controller Puck. T4 broke the Host NVIDIA display (no `nvidia-suspend` units, and `rtcwake` skips systemd), so step 11 gets task 8. T4 now keeps the Host awake 30 s in each cycle.
