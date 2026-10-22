@@ -20,6 +20,11 @@ hdmi_cec:
 
 switch:
   - platform: template
+    name: CEC TX soak
+    id: cec_tx_soak
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+  - platform: template
     name: CEC monitor mode
     id: cec_monitor_mode
     optimistic: true
@@ -107,6 +112,16 @@ esphome:
           });
 
 interval:
+  # Plan step 9b soak: Give Device Power Status to the TV every 2 s while the switch is on
+  - interval: 2s
+    then:
+      - if:
+          condition:
+            switch.is_on: cec_tx_soak
+          then:
+            - hdmi_cec.send:
+                destination: 0x0
+                data: [0x8F]
   - interval: 10s
     then:
       - lambda: |-

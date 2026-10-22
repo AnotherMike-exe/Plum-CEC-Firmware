@@ -13,9 +13,13 @@
 #include "esphome/core/helpers.h"
 
 #include "ack_rules.h"
+#include "cec_tx.h"
 
 #ifdef USE_ESP32
 #include "driver/gptimer.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
 #endif
 #ifdef USE_RP2040
 #include <hardware/timer.h>
@@ -81,6 +85,19 @@ class Frame {
   uint8_t flags_{0};
 };
 
+#ifdef USE_ESP32
+/// One frame for the TX task (local change, plan step 9b)
+struct TxRequest {
+  Frame frame;
+  /// Bus attempts before the result goes back. Pulse-Eight TX uses 1, because the kernel retries
+  uint8_t max_attempts{1};
+  /// Free bit periods on the line before the first attempt; 0 for the CEC standard time
+  uint8_t signal_free_bits{0};
+  TxDoneCallback done{nullptr};
+  void *context{nullptr};
+};
+#endif
+
 /// A queue of frames between one producer and one consumer, for instance the receive interrupt and
 /// loop(). The indices run freely and each is written by one side only, so no lock is needed.
 /// back() hands out a slot to fill and push_back() commits it; front() and pop_front() do the same
@@ -141,6 +158,11 @@ class HDMICEC : public Component {
 
   /// Queue a frame for transmission; false when the queue is full or in monitor mode
   bool send(uint8_t source, uint8_t destination, std::span<const uint8_t> payload);
+#ifdef USE_ESP32
+  /// Queue a TX request from any task; false when the queue is full or in monitor mode. The result
+  /// goes to request.done in the TX task (local change, plan step 9b)
+  bool submit(const TxRequest &request);
+#endif
   bool send(uint8_t destination, std::span<const uint8_t> payload) {
     return this->send(this->address_, destination, payload);
   }
@@ -178,7 +200,26 @@ class HDMICEC : public Component {
   static void ack_timer_isr_s(uint alarm_num);
 #endif
 
-  // Transmit side, in loop()
+#ifdef USE_ESP32
+  // Transmit side: a TX task starts each frame, and a gptimer alarm drives every edge and samples the
+  // line at the sample point of each bit, so the timing does not depend on loop() (cec_tx.cpp)
+  enum class TxPhase : uint8_t { START_RELEASE, START_SAMPLE, BIT_START, BIT_RELEASE, BIT_SAMPLE };
+  bool setup_tx_();
+  static void tx_task_s(void *arg);
+  void tx_task_();
+  /// Wait until the line was free for this many bit periods; false on a timeout
+  bool wait_bus_free_(uint8_t signal_free_bits);
+  uint8_t standard_signal_free_bits_() const;
+  TxResult tx_attempt_(const Frame &frame);
+  static bool tx_timer_isr_s(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *arg);
+  bool tx_timer_isr_(gptimer_handle_t timer);
+  bool tx_current_bit_() const;
+  /// Go to the next bit; true when the frame is complete
+  bool tx_advance_();
+  bool tx_finish_(gptimer_handle_t timer, TxResult result);
+#endif
+
+  // Transmit side, in loop() (not on the ESP32)
   void transmit_message_();
   /// Keep the frame for another attempt, or drop it once the attempts are used up
   void finish_attempt_(bool sent_ok);
@@ -210,6 +251,21 @@ class HDMICEC : public Component {
   ISRInternalGPIOPin isr_pin_;
 #ifdef USE_ESP32
   gptimer_handle_t ack_timer_{nullptr};
+  gptimer_handle_t tx_timer_{nullptr};
+  QueueHandle_t tx_queue_{nullptr};
+  TaskHandle_t tx_task_handle_{nullptr};
+  // TX state machine, written by the TX task before the timer starts, then by the timer interrupt
+  const uint8_t *tx_bytes_{nullptr};
+  uint32_t tx_bit_start_us_{0};  // timer count at the start of the current bit
+  uint32_t last_tx_end_us_{0};   // TX task only
+  Frame readback_;               // our own bytes as the receive interrupt read them
+  uint8_t tx_size_{0};
+  uint8_t tx_byte_inx_{0};
+  uint8_t tx_bit_inx_{0};  // 0 to 7 data, 8 end of message, 9 acknowledge
+  TxPhase tx_phase_{TxPhase::START_RELEASE};
+  bool tx_broadcast_{false};
+  bool last_tx_ok_{false};  // TX task only
+  std::atomic<TxResult> tx_result_{TxResult::SUCCESS};
 #endif
 #ifdef USE_RP2040
   int ack_alarm_{-1};
@@ -231,7 +287,7 @@ class HDMICEC : public Component {
   std::atomic<bool> deliver_all_{false};  // a frame listener exists, so every valid frame is queued
   uint8_t n_bytes_received_{0};
   uint8_t n_acks_received_{0};
-  bool transmitting_{false};
+  std::atomic<bool> transmitting_{false};  // our frame is on the line; the receive interrupt reads it
 
   // Receive state, interrupt only
   uint8_t recv_header_{0};  // kept outside the frame so a dropped frame can still be judged

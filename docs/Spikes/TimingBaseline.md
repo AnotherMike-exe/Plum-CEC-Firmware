@@ -58,3 +58,19 @@ esphome logs PlumCec.yaml --device <adapter IP> > probe.log   # some minutes of 
 python3 scripts/check_timing.py probe.log --owner other       # TV frames
 python3 scripts/check_timing.py probe.log --owner own         # Adapter frames
 ```
+
+## After plan step 9b
+
+Recorded on 2026-10-21. **Own TX: PASS.** A gptimer drives the TX edges (step 9b).
+
+Traffic: 1 h of Give Device Power Status to the TV, one each 2 s, with WiFi and the API on.
+
+| Check | Result |
+|---|---|
+| Sends | 1802 of 1802 succeeded. 1800 on the first attempt, 2 on the second |
+| `check_timing.py --owner own` | PASS. 1802 start bits, 32490 data bits, 5796 ACK bits, all in the windows |
+| Read-back differences | 0 |
+| Resets | 0 |
+| Own frames marked as own | 1802 of 1802 |
+
+Before step 9b, 8 of 18 start periods were out of window, and sends needed 2 to 6 attempts.

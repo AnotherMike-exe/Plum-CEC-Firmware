@@ -13,6 +13,10 @@ esp32:
       # The logger turns on the USB Serial/JTAG secondary console. Turn it off (invariant 1).
       CONFIG_ESP_CONSOLE_SECONDARY_NONE: y
       CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG: n
+      # The CEC TX and ACK timers run during flash writes, so their interrupts and the gptimer
+      # calls in them must be in IRAM (plan step 9b)
+      CONFIG_GPTIMER_ISR_IRAM_SAFE: y
+      CONFIG_GPTIMER_CTRL_FUNC_IN_IRAM: y
 
 external_components:
   - source:
