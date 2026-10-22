@@ -9,6 +9,10 @@ esp32:
   board: esp32-c3-devkitc-02
   framework:
     type: esp-idf
+    sdkconfig_options:
+      # The logger turns on the USB Serial/JTAG secondary console. Turn it off (invariant 1).
+      CONFIG_ESP_CONSOLE_SECONDARY_NONE: y
+      CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG: n
 
 external_components:
   - source:
@@ -16,9 +20,11 @@ external_components:
       path: components
 
 # UART0 only. USB Serial/JTAG (GPIO18/19) carries Pulse-Eight bytes (invariant 1).
-# The secondary console on USB Serial/JTAG is still on here. Step 4 removes it.
 logger:
   hardware_uart: UART0
+
+# Owns USB Serial/JTAG. Step 4 spike: echoes every byte back to the Host.
+pulse8:
 
 wifi:
   ssid: !secret wifi_ssid

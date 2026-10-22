@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Step 3 in progress.
+**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Step 4 done, GATE A passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
 
 ## Read this first (every step)
 
@@ -488,3 +488,4 @@ approve each PR before you open it.
 - 2026-10-19: owner approved the plan and the GPIO4 jumper. Repos are public from step 1, because a free account has no rulesets on a private repo. Commits keep the Gmail author address, as in the other Plum repos.
 - 2026-10-20: step 2. OTA uses `encryption: {}` (the API key) and not a password, because ESPHome 2026.9.1 warns that a password wastes flash and RAM. The `.clang-format` and `clang-format` 13.0.1 come from ESPHome, so the CEC code keeps the upstream format for step 13.
 - 2026-10-20: step 3. The breakout is `04-JVD0001-01 Rev. 1A` with a labeled 8-pin header, so the wiring uses the header labels. The Host has no AUR helper, and the AUR `linuxconsoletools` PKGBUILD has no build steps, so `inputattach` comes from the upstream tarball.
+- 2026-10-21: step 4. GATE A passed (`docs/Spikes/UsbSerialJtag.md`). The `sdkconfig_options` override turns off the secondary console, so no `__init__.py` hook is necessary. Step 4 ran before the end of step 3, because only the breakout measurements and the bench photo were open.
