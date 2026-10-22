@@ -38,7 +38,7 @@ No frame was malformed.
 
 ## Findings
 
-1. The TV and the soundbar are exact. They are the reference, and `scripts/testdata/timing_good.log` is from this run.
+1. The TV and the soundbar are exact. They are the reference, and `scripts/testdata/timing_good.txt` is from this run.
 2. The probe and the check work: the TV frames pass, and the Adapter frames fail.
 3. The Adapter ACKs (driven from the receive interrupt and the gptimer) are in the window.
 4. The Adapter TX stretches some levels by 0.4 to 0.9 ms. 8 of 18 start bits have a period out of window.

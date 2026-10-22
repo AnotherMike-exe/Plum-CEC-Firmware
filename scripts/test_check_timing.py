@@ -9,12 +9,12 @@ DATA = Path(__file__).parent / "testdata"
 
 
 def test_recorded_tv_traffic_passes(capsys):
-    assert check_timing.main([str(DATA / "timing_good.log")]) == 0
+    assert check_timing.main([str(DATA / "timing_good.txt")]) == 0
     assert "PASS" in capsys.readouterr().out
 
 
 def test_one_bad_sample_fails(capsys):
-    assert check_timing.main([str(DATA / "timing_bad.log")]) == 1
+    assert check_timing.main([str(DATA / "timing_bad.txt")]) == 1
     out = capsys.readouterr().out
     assert "FAIL other data1_low: 1 in 850-899 us, window 400-800 us" in out
 
