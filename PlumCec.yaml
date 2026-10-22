@@ -23,13 +23,15 @@ external_components:
 packages:
   m1_bench: !include packages/m1_bench.yaml
   timing_probe: !include packages/timing_probe.yaml
+  gate_b: !include packages/gate_b.yaml
 
 # UART0 only. USB Serial/JTAG (GPIO18/19) carries Pulse-Eight bytes (invariant 1).
 logger:
   hardware_uart: UART0
 
-# Owns USB Serial/JTAG. Step 4 spike: echoes every byte back to the Host.
+# Pulse-Eight USB-CEC on USB Serial/JTAG. Step 8 runs it on a stub CEC bus.
 pulse8:
+  id: pulse8_usb
 
 wifi:
   ssid: !secret wifi_ssid

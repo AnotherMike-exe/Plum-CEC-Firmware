@@ -1,0 +1,12 @@
+# Gate B tests (plan step 8). The stub bus makes one RX frame every 100 ms while this switch is on.
+
+switch:
+  - platform: template
+    name: Pulse8 stub RX frames
+    id: pulse8_stub_rx
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - lambda: id(pulse8_usb).set_stub_rx(true);
+    turn_off_action:
+      - lambda: id(pulse8_usb).set_stub_rx(false);
