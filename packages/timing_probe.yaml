@@ -1,0 +1,6 @@
+# CEC timing probe (plan step 6). GPIO4 is jumpered to GPIO10, the CEC line.
+# It logs a histogram of the bit timing to UART0 every 10 s. Check it with scripts/check_timing.py.
+
+cec_probe:
+  pin: GPIO4
+  address: 4

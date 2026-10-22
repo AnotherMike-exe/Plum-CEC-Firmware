@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4 and 5 done, GATE A passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
+**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5 and 6 done, GATE A passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
 
 ## Read this first (every step)
 
@@ -490,3 +490,4 @@ approve each PR before you open it.
 - 2026-10-20: step 3. The breakout is `04-JVD0001-01 Rev. 1A` with a labeled 8-pin header, so the wiring uses the header labels. The Host has no AUR helper, and the AUR `linuxconsoletools` PKGBUILD has no build steps, so `inputattach` comes from the upstream tarball.
 - 2026-10-21: step 4. GATE A passed (`docs/Spikes/UsbSerialJtag.md`). The `sdkconfig_options` override turns off the secondary console, so no `__init__.py` hook is necessary. Step 4 ran before the end of step 3, because only the breakout measurements and the bench photo were open.
 - 2026-10-21: step 5. The `hdmi_cec` copy needs 4 small changes for ESPHome 2026.9.1 (`components/hdmi_cec/UPSTREAM.md`). The M1 package has a runtime switch for monitor mode, so the button tests need no reflash. The Give Physical Address reply must match `destination: 4`, because promiscuous mode also passes frames for other devices. Host sleep frame: Standby to TV. Many sends need 2 to 6 attempts, so step 6 checks the bit timing. Results in hardware `docs/TvBehavior.md`.
+- 2026-10-21: step 6. `cec_probe` finds own TX from the decoded frame header (initiator 4), not from a flag in `hdmi_cec`, so `hdmi_cec` does not change. The TV frames pass. Own TX fails: some levels stretch by 0.4 to 0.9 ms, because `loop()` TX is preempted. Step 9b fixes it. Baseline in `docs/Spikes/TimingBaseline.md`.
