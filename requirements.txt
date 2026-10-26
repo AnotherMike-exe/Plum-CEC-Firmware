@@ -2,4 +2,4 @@
 esphome==2026.9.1
 # The version ESPHome uses, so the CEC code stays in upstream format.
 clang-format==13.0.1
-pytest==8.4.2
+pytest==9.1.1
