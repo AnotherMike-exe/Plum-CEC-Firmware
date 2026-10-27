@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: MIT
+# Plan step 14 spike: USB remote wakeup on the ESP32-S3-DevKitC-1 v1.0 (N8R2).
+# The S3 USB OTG port (GPIO19 D-, GPIO20 D+) goes to the Host. UART0 is the console.
+
+esphome:
+  name: plum-cec-s3
+  friendly_name: Plum-CEC S3 spike
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      # TinyUSB takes the USB PHY, so no console on USB Serial/JTAG
+      CONFIG_ESP_CONSOLE_SECONDARY_NONE: y
+      CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG: n
+
+external_components:
+  - source:
+      type: local
+      path: spikes/components
+
+logger:
+  hardware_uart: UART0
+
+usb_wake:
+  id: usb_wake_spike
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    encryption: {}
+
+button:
+  - platform: template
+    name: Wake Host 50 ms
+    id: wake_host
+    on_press:
+      - lambda: id(usb_wake_spike).wake(50);
+  - platform: template
+    name: Wake Host 150 ms
+    id: wake_host_long
+    on_press:
+      - lambda: id(usb_wake_spike).wake(150);
+  - platform: template
+    name: Wake Host 12 ms
+    id: wake_host_spec
+    on_press:
+      - lambda: id(usb_wake_spike).wake(12);
+  - platform: template
+    name: Sleep Host
+    id: sleep_host
+    on_press:
+      - lambda: id(usb_wake_spike).sleep();
+
+# The devkit BOOT button: one tap sends a 50 ms wake, a double tap a 150 ms wake, and a 2 s
+# hold sends System Sleep. The RESET button is wired to the chip enable pin, so firmware
+# cannot read it.
+binary_sensor:
+  - platform: gpio
+    name: Boot button
+    pin:
+      number: GPIO0
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_multi_click:
+      - timing:
+          - ON for at most 0.6s
+          - OFF for at most 0.4s
+          - ON for at most 0.6s
+          - OFF for at least 0.2s
+        then:
+          - lambda: id(usb_wake_spike).wake(150);
+      - timing:
+          - ON for at most 0.6s
+          - OFF for at least 0.5s
+        then:
+          - lambda: id(usb_wake_spike).wake(50);
+      - timing:
+          - ON for at least 2s
+        then:
+          - lambda: id(usb_wake_spike).sleep();
