@@ -1,0 +1,16 @@
+# Bench board: ESP32-S3-DevKitC-1 v1.0 (N8R2). Wiring in hardware docs/BenchWiring.md.
+# GPIO1 to GPIO20 pull low for about 60 us at power-up (S3 datasheet v2.2, table 2-2).
+# Through the isolation taps, that pulse reaches the HDMI CEC and DDC lines. So the bus
+# pins and the probe (jumpered to CEC) use glitch-free pins only.
+
+substitutions:
+  cec_pin: GPIO21
+  probe_pin: GPIO47
+  ddc_sda_pin: GPIO38
+  ddc_scl_pin: GPIO39
+  led_pin: GPIO48
+  led_pin_is_strap: "false"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 8MB

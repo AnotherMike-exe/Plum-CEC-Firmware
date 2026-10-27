@@ -1,6 +1,6 @@
 # Plum-CEC-Firmware
 
-> ESPHome firmware for the ESP32-C3 that makes a DIY HDMI-CEC adapter look like a Pulse-Eight dongle to Linux.
+> ESPHome firmware for the ESP32-S3 (and the ESP32-C3) that makes a DIY HDMI-CEC adapter look like a Pulse-Eight dongle to Linux.
 
 GPUs have no CEC hardware, so a PC cannot turn a TV on or off, or select an input. This
 firmware drives the HDMI CEC line from one GPIO. It speaks the Pulse-Eight serial

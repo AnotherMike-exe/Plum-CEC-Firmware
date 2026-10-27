@@ -6,7 +6,8 @@ somebody must understand before they change it.
 ## Shape
 
 An ESPHome configuration (`PlumCec.yaml`) with local external components, on an
-ESP32-C3 (ADR 0002). It bit-bangs the HDMI CEC line on GPIO10. To Linux it
+ESP32-S3 bench board (hardware ADR 0005). It bit-bangs the HDMI CEC line on GPIO21. The pins
+are in the board package (`packages/board_s3.yaml`, `packages/board_c3.yaml`). To Linux it
 is a Pulse-Eight USB-CEC dongle on a serial port. The kernel `pulse8-cec` driver then
 does all CEC protocol logic (logical address, topology, message handling). The firmware
 is a CEC PHY plus a serial protocol endpoint (the USB front-end), with the ESPHome native
@@ -20,7 +21,7 @@ The plan (`docs/Plans/ProofOfConcept.md`) adds each one. Only the ESPHome core p
 
 | Component | Does | Built with | Plan step |
 |---|---|---|---|
-| ESPHome core | WiFi, native API, OTA, logger on UART0, status LED on GPIO8 | `PlumCec.yaml` | 2 (done) |
+| ESPHome core | WiFi, native API, OTA, logger on UART0, status LED (S3 GPIO48, C3 GPIO8) | `PlumCec.yaml` | 2 (done) |
 | `hdmi_cec` | CEC RX and TX with arbitration and ACK. A local copy of the ESPHome component, same name (ADR 0004) | ESP-IDF GPIO, gptimer, RMT RX | 5, 6, 9a, 9b |
 | `pulse8` | Pulse-Eight endpoint on USB Serial/JTAG: framing, escaping, commands, TX and RX translation | USB Serial/JTAG driver, FreeRTOS queues | 4, 7, 8, 9c |
 | Identity | Kernel identity while Attached, Default identity while Detached (ADR 0001) | ESPHome preferences | 10 |
@@ -29,9 +30,9 @@ The plan (`docs/Plans/ProofOfConcept.md`) adds each one. Only the ESPHome core p
 
 ```
 Host: cec-ctl → /dev/cec0 → pulse8-cec driver ──USB Serial/JTAG──► pulse8 ─┐
-                                                                            ├─► CEC frame queue ─► hdmi_cec ─► GPIO10 ─► TV
+                                                                            ├─► CEC frame queue ─► hdmi_cec ─► GPIO21 ─► TV
 Home Assistant ──native API (optional MQTT)──────────────────► ESPHome ────┘
-TV ─► GPIO10 ─► hdmi_cec (RX) ─► queue ─► pulse8 (forwards every valid frame) and the API (events)
+TV ─► GPIO21 ─► hdmi_cec (RX) ─► queue ─► pulse8 (forwards every valid frame) and the API (events)
 ```
 
 ## Pulse-Eight protocol summary
@@ -113,12 +114,21 @@ previous commit, or the binary from the previous GitHub release.
 
 ### ESP32-C3 native USB
 
-**Chose**: USB Serial/JTAG on the C3 for the bench. The PCB moves to the ESP32-S3 with
+**Chose**: USB Serial/JTAG for the bench, on the C3 and on the S3. The PCB moves to the ESP32-S3 with
 TinyUSB CDC and HID (hardware ADR 0005).
 **Over**: keeping the C3 on the PCB
 **Because**: the C3 cannot wake the Host over USB. The S3 can (`S3WakeSpike.yaml`, plan
 step 14).
-**Revisit when**: the firmware port to the S3 is planned. It needs a new plan step.
+**Revisit when**: plan step 15 ports the USB front-end to TinyUSB.
+
+### Bus pins on the S3
+
+**Chose**: CEC on GPIO21, the probe on GPIO47, DDC SDA on GPIO38 and SCL on GPIO39
+**Over**: the C3 numbers (CEC GPIO10, probe GPIO4) and DDC on GPIO1 and GPIO2
+**Because**: on the S3, GPIO1 to GPIO20 pull low for about 60 µs at power-up (S3 datasheet
+v2.2, table 2-2). The isolation taps pass that pulse to the HDMI CEC and DDC lines. The
+Adapter powers on with the Host, while the Host reads the EDID. C3 GPIO10 glitches for 5 ns only.
+**Revisit when**: the PCB layout needs a different pin. Use a pin with no power-up glitch.
 
 ### ESPHome external components
 

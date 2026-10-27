@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Pulse-Eight USB-CEC emulation on the C3 USB Serial/JTAG peripheral."""
+"""Pulse-Eight USB-CEC emulation on the USB Serial/JTAG peripheral (ESP32-C3 or ESP32-S3)."""
 
 import esphome.codegen as cg
 import esphome.config_validation as cv

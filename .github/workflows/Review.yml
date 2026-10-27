@@ -64,8 +64,9 @@ jobs:
           path: |
             ~/.platformio
             .esphome
-          key: esphome-${{ hashFiles('requirements.txt', 'PlumCec.yaml', 'components/**') }}
-          restore-keys: esphome-
+          # The prefix names the chip. A build directory for another chip fails at cmake.
+          key: esphome-esp32s3-${{ hashFiles('requirements.txt', 'PlumCec.yaml', 'packages/**', 'components/**') }}
+          restore-keys: esphome-esp32s3-
       - name: Write dummy secrets
         run: |
           cat > secrets.yaml <<YAML

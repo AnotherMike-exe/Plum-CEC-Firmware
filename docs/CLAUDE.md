@@ -5,7 +5,7 @@ that is missing, because it is trusted.
 
 ## What this is
 
-ESPHome firmware for a DIY HDMI-CEC adapter on an ESP32-C3. It bit-bangs CEC on GPIO10,
+ESPHome firmware for a DIY HDMI-CEC adapter on an ESP32-S3. It bit-bangs CEC on GPIO21,
 speaks the Pulse-Eight protocol over USB so Linux gets `/dev/cec0`, and takes commands
 over WiFi for Home Assistant (native API, optional MQTT). The goal is a gaming PC that wakes and sleeps the TV like a console.
 The hardware is in the sibling repo
@@ -13,7 +13,7 @@ The hardware is in the sibling repo
 outline is in `_resources/Notes/cec-adapter-overview.md`.
 
 **Stage**: prototype (ESPHome scaffold, milestone M0)
-**Deployed on**: ESP32-C3-DevKitC-02 on the bench
+**Deployed on**: ESP32-S3-DevKitC-1 v1.0 on the bench (`packages/board_s3.yaml`)
 
 ## Stack
 
@@ -65,7 +65,9 @@ log with `ESP_LOGW` or `ESP_LOGE` and continue.
 - Secrets go in `secrets.yaml` only. Never commit it.
 - Never write to USB from the CEC ISR. Use queues, and drop on overflow.
 - No sleep modes while USB is attached.
-- GPIO18 and GPIO19 stay reserved for USB.
+- USB pins stay reserved for USB: GPIO19/20 on the S3, GPIO18/19 on the C3.
+- Pins live in the board packages (`packages/board_*.yaml`). Use the substitutions, never a raw GPIO number.
+- On the S3, CEC, DDC and the probe never use GPIO1 to GPIO20. Those pins pull low for 60 µs at power-up.
 - Do not burn eFuses on the prototype.
 - A pin change here also changes the hardware. Update both repos.
 

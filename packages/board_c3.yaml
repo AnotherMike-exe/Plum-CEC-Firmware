@@ -1,0 +1,13 @@
+# Retired bench board: ESP32-C3-DevKitC-02 (to plan step 14 task 3).
+
+substitutions:
+  cec_pin: GPIO10
+  probe_pin: GPIO4
+  ddc_sda_pin: GPIO0
+  ddc_scl_pin: GPIO1
+  # GPIO8 is a strapping pin. The devkit wires the LED to it, and the LED does not pull it low.
+  led_pin: GPIO8
+  led_pin_is_strap: "true"
+
+esp32:
+  board: esp32-c3-devkitc-02

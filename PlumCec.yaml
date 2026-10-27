@@ -1,4 +1,4 @@
-# Plum-CEC Adapter on the ESP32-C3-DevKitC-02 bench board.
+# Plum-CEC Adapter. The board package sets the chip and the pins.
 # Secrets come from secrets.yaml (git-ignored). Copy secrets.example.yaml to start.
 
 esphome:
@@ -6,7 +6,6 @@ esphome:
   friendly_name: Plum-CEC
 
 esp32:
-  board: esp32-c3-devkitc-02
   framework:
     type: esp-idf
     sdkconfig_options:
@@ -23,13 +22,15 @@ external_components:
       type: local
       path: components
 
-# M1 bench tests. Plan step 9c removes this package.
 packages:
+  # The bench board: board_s3.yaml (ESP32-S3-DevKitC-1) or board_c3.yaml (retired C3 bench)
+  board: !include packages/board_s3.yaml
+  # M1 bench tests. Plan step 9c removes this package.
   m1_bench: !include packages/m1_bench.yaml
   timing_probe: !include packages/timing_probe.yaml
   gate_b: !include packages/gate_b.yaml
 
-# UART0 only. USB Serial/JTAG (GPIO18/19) carries Pulse-Eight bytes (invariant 1).
+# UART0 only. USB Serial/JTAG (S3 GPIO19/20, C3 GPIO18/19) carries Pulse-Eight bytes (invariant 1).
 logger:
   hardware_uart: UART0
 
@@ -57,15 +58,14 @@ ota:
   - platform: esphome
     encryption: {}
 
-# Status LED: the on-board WS2812 on GPIO8. It takes one RMT TX channel.
+# Status LED: the on-board WS2812. It takes one RMT TX channel.
 light:
   - platform: esp32_rmt_led_strip
     id: status_led
     name: Status LED
     pin:
-      number: GPIO8
-      # GPIO8 is a strapping pin. The devkit wires the LED to it, and the LED does not pull it low.
-      ignore_strapping_warning: true
+      number: ${led_pin}
+      ignore_strapping_warning: ${led_pin_is_strap}
     num_leds: 1
     chipset: WS2812
     channel_colors: GRB

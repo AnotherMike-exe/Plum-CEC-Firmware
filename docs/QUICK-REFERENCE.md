@@ -26,13 +26,17 @@ cec-ctl -d /dev/cec0 --monitor-all       # watch all frames
 
 ## Pins
 
-| Function | GPIO |
-|---|---|
-| CEC data | 10 |
-| Timing probe (jumper to GPIO10, step 6) | 4 |
-| Native USB D− / D+ | 18 / 19 (reserved) |
-| Status LED (WS2812) | 8 |
-| BOOT / recovery | 9 |
+The board package sets the pins. Use the substitution names in YAML.
+
+| Function | Substitution | S3 GPIO | C3 GPIO (retired) |
+|---|---|---|---|
+| CEC data | `cec_pin` | 21 | 10 |
+| Timing probe (jumper to CEC, step 6) | `probe_pin` | 47 | 4 |
+| DDC SDA (step 14 sniffer) | `ddc_sda_pin` | 38 | 0 |
+| DDC SCL (step 14 sniffer) | `ddc_scl_pin` | 39 | 1 |
+| Status LED (WS2812) | `led_pin` | 48 | 8 |
+| Native USB D− / D+ | — | 19 / 20 (reserved) | 18 / 19 (reserved) |
+| BOOT / recovery | — | 0 | 9 |
 
 Full wiring: [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Hardware)
 

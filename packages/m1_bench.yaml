@@ -3,7 +3,7 @@
 
 hdmi_cec:
   id: cec
-  pin: GPIO10
+  pin: ${cec_pin}
   address: 4
   promiscuous_mode: true
   # Start as a listener only: no ACK and no send. The switch below turns it off at runtime.

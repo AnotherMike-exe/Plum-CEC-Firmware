@@ -44,15 +44,15 @@ These files hold the decisions. A step brief does not repeat them.
 | Host packages | `v4l-utils` 1.32.0 and `libcec` 8.1.7 from pacman. `inputattach` 1.8.1 built from the upstream tarball into `/usr/local/bin`, because the AUR PKGBUILD has no build steps. The login shell is fish. |
 | Mac | Builds and flashes. Its micro-USB cable gives power and the UART0 console. |
 | Adapter to Host | C3 (to step 14 task 3): native USB (GPIO18 D−, GPIO19 D+) through a USB breakout, VBUS not connected. S3 (from step 15): devkit `USB` port (GPIO19 D−, GPIO20 D+) to Host CPU port 5-1. Wiring in hardware `docs/BenchWiring.md`. |
-| CEC wiring | GPIO10 to HDMI pin 13 (breakout header `CEC`), GND to HDMI pin 17 (header `DDC_GND`). HDMI pins 18 and 19 (`+5V`, `HP_DET`) never connected. |
+| CEC wiring | S3 bench: GPIO21 (C3 bench: GPIO10) through module channel 4 to HDMI pin 13 (breakout header `CEC`), GND to HDMI pin 17 (header `DDC_GND`). HDMI pins 18 and 19 (`+5V`, `HP_DET`) never connected. |
 | HDMI breakout | `04-JVD0001-01 Rev. 1A`, male J1 to female J2, 8-pin header. Photos in hardware `Breadboard/`. |
-| Timing probe | GPIO4 jumpered to GPIO10, read by an RMT RX channel (step 6). Owner approved 2026-10-19. |
+| Timing probe | S3 bench: GPIO47 jumpered to GPIO21 (C3 bench: GPIO4 to GPIO10), read by an RMT RX channel (step 6). Owner approved 2026-10-19. |
 | Wake device | Steam Controller Puck `28de:1304` on the Host. udev sets `power/wakeup=enabled`. |
 
 ## Invariants (check after every step)
 
 1. Logs go to UART0 only. USB Serial/JTAG carries Pulse-Eight bytes and nothing else.
-2. GPIO18 and GPIO19 stay for USB. CEC never uses GPIO2, 8 or 9.
+2. USB pins stay for USB (S3: GPIO19, 20. C3: GPIO18, 19). Pins come from the board package substitutions. On the S3, CEC, DDC and the probe never use GPIO1 to GPIO20 (60 µs power-up glitch) or the strap pins 0, 3, 45, 46.
 3. No eFuse burns. No sleep modes while Attached.
 4. No CEC ISR writes to USB. ISR to task traffic goes through queues, and drops on overflow.
 5. `esphome compile PlumCec.yaml` passes. Host unit tests and `pytest scripts/` pass. `clang-format` is clean.
@@ -492,7 +492,7 @@ owner before each suspend, and suspend only once for each test.
 1. Remote wakeup: with the Host awake, run `lsusb -v -d 303a:1001 | grep -i "remote wakeup"`. If the attribute is missing, the C3 cannot wake the Host over USB. Stop and report to the owner: the MCU choice is open again (hardware ADR 0002).
 2. HDMI mode through the breakout: run the Host at the highest TV mode for 30 min. Check the FW-55BZ40H specification first, because it probably stops at 4K60. Record any dropout. HDMI 2.1 FRL needs a different TV, so record that test as open.
 3. Isolation (only if the owner has a BSS138 level-shifter module): use one 4-channel module. Remove the HV4 pull-up resistor first, because with HV open the HV pull-ups join all HV channels and couple CEC to the 5 V DDC lines. Wire CEC through channel 4, LV to 3.3 V, HV open. Run `check_timing.py` for 10 min. Then remove the Adapter power, and make sure that the TV and the soundbar still exchange CEC frames.
-4. Passive EDID read: wire `DDC_DATA` through channel 1 (GPIO1) and `DDC_CLK` through channel 2 (GPIO2, S3 bench) of the same module. Add a bench sniffer that logs the bytes at address 0x50 when the Host reads the EDID (unplug and plug in the Host HDMI cable). Take the physical address from the HDMI vendor block, and compare with `1.0.0.0`.
+4. Passive EDID read: wire `DDC_DATA` through channel 1 (`ddc_sda_pin`, S3 GPIO38) and `DDC_CLK` through channel 2 (`ddc_scl_pin`, S3 GPIO39) of the same module. Add a bench sniffer that logs the bytes at address 0x50 when the Host reads the EDID (unplug and plug in the Host HDMI cable). Take the physical address from the HDMI vendor block, and compare with `1.0.0.0`.
 5. Host port power in S3: move the devkit power to a Host USB port, suspend once, and check if the Adapter stays on WiFi. Repeat for the ports that the owner chooses.
 6. Initiator 15: with `cec-ctl` on the Host as Unregistered, send Image View On, Active Source `1.0.0.0` and Standby to the TV. Record which ones the TV accepts, in hardware `docs/TvBehavior.md`.
 
@@ -507,17 +507,18 @@ any schematic work.
 to an ESP32-S3-DevKitC-1 v1.0 (N8R2). Wiring in hardware `docs/BenchWiring.md`. The
 TinyUSB CDC and HID descriptors and the wake code are in `S3WakeSpike.yaml` and
 `spikes/components/usb_wake/`. The tests that follow this step are in hardware
-`docs/S3BenchTests.md`. Invariant 2 for the S3: GPIO19 and GPIO20 stay for USB, and CEC
-never uses GPIO0, 3, 45 or 46.
+`docs/S3BenchTests.md`. Invariant 2 for the S3: GPIO19 and GPIO20 stay for USB. CEC, DDC and the probe
+never use GPIO1 to GPIO20 or the strap pins. The board package `packages/board_s3.yaml`
+already holds the pins, and `PlumCec.yaml` builds for the S3 with USB Serial/JTAG.
 
 **Tasks**:
-1. `PlumCec.yaml` for `esp32-s3-devkitc-1`, 8 MB flash, console on UART0 only. LED on GPIO48.
+1. Done 2026-10-26: `packages/board_s3.yaml` (8 MB flash, CEC GPIO21, probe GPIO47, LED GPIO48). Flash it, and run hardware `docs/S3BenchTests.md` T0.
 2. USB front-end on TinyUSB CDC and HID with remote wakeup, in place of USB Serial/JTAG. The Pulse-Eight code does not change.
 3. API buttons `Wake Host 1 ms`, `Wake Host 12 ms`, `Wake Host 50 ms` and `Sleep Host`.
 4. A second wake in one suspend drives the line again (the DWC2 core drives only the first).
-5. The EDID sniffer on GPIO1 (SDA) and GPIO2 (SCL), behind a YAML option (step 14 task 4).
+5. The EDID sniffer on `ddc_sda_pin` (GPIO38) and `ddc_scl_pin` (GPIO39), behind a YAML option (step 14 task 4).
 6. Step 11 task 7: on the S3 the Adapter is the wake device, so `power/wakeup` stays enabled. Update step 11.
-7. Update invariants 1 and 2 for the S3.
+7. Update invariant 1 for TinyUSB.
 
 **Verify**: `esphome compile PlumCec.yaml` passes. Hardware `docs/S3BenchTests.md` T0 and T1 pass.
 
@@ -550,3 +551,4 @@ never uses GPIO0, 3, 45 or 46.
 - 2026-10-26: step 14 task 3 done before step 9c, because the module was on the bench. One 4-channel BSS138 module with the HV4 pull-up removed, not one module for each signal. CEC timing PASS through the module, and the TV and the soundbar exchange CEC with the Adapter unpowered. Tasks 3 and 4 now name the module channels. Result in hardware `docs/PcbInputs.md`.
 - 2026-10-26: step 14 task 1. The C3 cannot wake the Host over USB. The ESP32-S3 (TinyUSB CDC and HID, `S3WakeSpike.yaml`) wakes the Host from S3 sleep on a CPU USB port, not on the AMD chipset ports. The owner chose the S3 for the PCB (hardware ADR 0005). The firmware port to the S3 needs a new plan step.
 - 2026-10-26: new step 15, the port to the S3 bench. DDC moves to GPIO1 and GPIO2, because GPIO0 is a strap pin on the S3. Hardware `docs/S3BenchTests.md` holds the tests that close the bench. Steps 10 to 13 do not change the PCB, so they do not block M8.
+- 2026-10-26: the S3 bus pins move off GPIO1 to GPIO20, which pull low for 60 µs at power-up (S3 datasheet table 2-2). CEC GPIO21, probe GPIO47, DDC GPIO38 and GPIO39. The pins move into board packages (`packages/board_s3.yaml`, `packages/board_c3.yaml`), and `PlumCec.yaml` builds for the S3. The CI cache key names the chip.
