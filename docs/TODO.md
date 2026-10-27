@@ -15,6 +15,8 @@ The M0 to M6 plan is in `docs/Plans/ProofOfConcept.md`. Its step list is the wor
 ## Next
 
 - [ ] Add host unit tests for `pulse8` framing and escaping in `test/` (plan step 7)
+- [ ] Plan the port to the ESP32-S3 (hardware ADR 0005): TinyUSB CDC and HID in place of
+  USB Serial/JTAG, the 12 ms wake on a CPU port, more than one wake in one suspend
 
 ## Someday
 

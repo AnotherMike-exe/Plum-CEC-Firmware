@@ -113,10 +113,12 @@ previous commit, or the binary from the previous GitHub release.
 
 ### ESP32-C3 native USB
 
-**Chose**: USB Serial/JTAG on the C3
-**Over**: ESP32-S3 with TinyUSB
-**Because**: the C3 is the bench board. The S3 is the fallback.
-**Revisit when**: the USB spike (plan step 4, GATE A) fails. The S3 stays on ESPHome.
+**Chose**: USB Serial/JTAG on the C3 for the bench. The PCB moves to the ESP32-S3 with
+TinyUSB CDC and HID (hardware ADR 0005).
+**Over**: keeping the C3 on the PCB
+**Because**: the C3 cannot wake the Host over USB. The S3 can (`S3WakeSpike.yaml`, plan
+step 14).
+**Revisit when**: the firmware port to the S3 is planned. It needs a new plan step.
 
 ### ESPHome external components
 
