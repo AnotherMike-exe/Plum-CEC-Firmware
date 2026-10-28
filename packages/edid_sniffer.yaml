@@ -1,0 +1,20 @@
+# Passive EDID sniffer on the DDC taps (plan step 14 task 4). The button arms it for 60 s. It logs
+# the EDID and the physical address to UART0. Arm it only for a bench test: a capture holds the
+# GPIO interrupt, so CEC frames during an EDID read can fail.
+
+ddc_sniffer:
+  id: edid_sniffer
+  sda_pin:
+    number: ${ddc_sda_pin}
+    mode:
+      input: true
+  scl_pin:
+    number: ${ddc_scl_pin}
+    mode:
+      input: true
+
+button:
+  - platform: template
+    name: Sniff EDID 60 s
+    on_press:
+      - lambda: id(edid_sniffer).arm(60);

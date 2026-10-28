@@ -51,7 +51,7 @@ These files hold the decisions. A step brief does not repeat them.
 
 ## Invariants (check after every step)
 
-1. Logs go to UART0 only. USB Serial/JTAG carries Pulse-Eight bytes and nothing else.
+1. Logs go to UART0 only. The USB CDC port (TinyUSB on the S3, USB Serial/JTAG on the C3) carries Pulse-Eight bytes and nothing else. The S3 HID interface carries only the System Sleep key.
 2. USB pins stay for USB (S3: GPIO19, 20. C3: GPIO18, 19). Pins come from the board package substitutions. On the S3, CEC, DDC and the probe never use GPIO1 to GPIO20 (60 µs power-up glitch) or the strap pins 0, 3, 45, 46.
 3. No eFuse burns. No sleep modes while Attached.
 4. No CEC ISR writes to USB. ISR to task traffic goes through queues, and drops on overflow.
@@ -434,13 +434,13 @@ suspend after 60 s" rule, off by default. The sleep frame comes from hardware
 (`/etc/udev/rules.d/90-plumcec-steam-puck.rules`).
 
 **Tasks**:
-1. udev rule: match `303a:1001` and the serial number from step 4. Start `cec-adapter-inputattach@%k.service`. Keep the template names.
+1. udev rule: match `303a:4002` and the serial number `PLUMCEC0001` (S3, step 15). Start `cec-adapter-inputattach@%k.service`. Keep the template names.
 2. The unit runs `inputattach --pulse8-cec /dev/%I` in the foreground (no `--daemon`). An `ExecStartPost` waits for `/dev/cec0`, then runs `cec-ctl -d /dev/cec0 --playback -p 1.0.0.0`. Restart the unit after resume.
 3. Sleep hook (`/usr/lib/systemd/system-sleep/plum-cec`): `pre` sends the sleep frame. `post` does not send. After resume, the unit `ExecStartPost` sends Image View On and Active Source after it configures the adapter. This prevents a race with the address claim.
 4. Shutdown: a unit ordered `Before=shutdown.target` sends the sleep frame at poweroff and reboot. Sleep hooks do not run at shutdown.
 5. Host daemon `scripts/plum_cec_hostd.py` (system unit). It reads `cec-ctl --monitor`. It does the ADR 0005 workarounds and the optional suspend rule. It also reads the Puck input events (evdev). If the TV is off and a controller button comes, it sends Image View On and Active Source.
 6. Add pytest tests for the daemon with recorded `cec-ctl --monitor` output and fake input events.
-7. Make sure that the Adapter (`303a:1001`) has `power/wakeup` disabled.
+7. Make sure that the Adapter (`303a:4002`) has `power/wakeup` enabled. On the S3, the Adapter is the wake device (step 15).
 8. NVIDIA display after resume (Gate B finding 3): enable `nvidia-suspend`, `nvidia-resume` and `nvidia-hibernate`. Check `NVreg_PreserveVideoMemoryAllocations=1`. Test with one `systemctl suspend` and the owner present. The TV must show the desktop after resume.
 9. Add `scripts/install.sh` and update hardware `docs/HostSetup.md`.
 
@@ -513,12 +513,12 @@ already holds the pins, and `PlumCec.yaml` builds for the S3 with USB Serial/JTA
 
 **Tasks**:
 1. Done 2026-10-26: `packages/board_s3.yaml` (8 MB flash, CEC GPIO21, probe GPIO47, LED GPIO48). Flash it, and run hardware `docs/S3BenchTests.md` T0.
-2. USB front-end on TinyUSB CDC and HID with remote wakeup, in place of USB Serial/JTAG. The Pulse-Eight code does not change.
-3. API buttons `Wake Host 1 ms`, `Wake Host 12 ms`, `Wake Host 50 ms` and `Sleep Host`.
-4. A second wake in one suspend drives the line again (the DWC2 core drives only the first).
-5. The EDID sniffer on `ddc_sda_pin` (GPIO38) and `ddc_scl_pin` (GPIO39), behind a YAML option (step 14 task 4).
-6. Step 11 task 7: on the S3 the Adapter is the wake device, so `power/wakeup` stays enabled. Update step 11.
-7. Update invariant 1 for TinyUSB.
+2. Done 2026-10-28: `components/host_usb` (TinyUSB CDC and HID, remote wakeup, `303a:4002`, serial `PLUMCEC0001`). `pulse8` takes `host_usb_id`. Without it, `pulse8` stays on USB Serial/JTAG (C3). The Pulse-Eight code does not change.
+3. Done 2026-10-28: API buttons `Wake Host 1 ms`, `Wake Host 12 ms`, `Wake Host 50 ms`, `Wake Host by reconnect` and `Sleep Host`, in `packages/board_s3.yaml`.
+4. Code done 2026-10-28, bench test open (hardware T9): `wake()` waits up to 10 ms for `DSTS.SuspSts` before a second wake, and logs the line state. `Wake Host by reconnect` is the fallback.
+5. Done 2026-10-28: `components/ddc_sniffer` in `packages/edid_sniffer.yaml`. The `Sniff EDID 60 s` button arms it.
+6. Done 2026-10-28: step 11 tasks 1 and 7 updated. `scripts/gate_b.sh` and the udev template use the S3 identity.
+7. Done 2026-10-28: invariant 1 updated for TinyUSB.
 
 **Verify**: `esphome compile PlumCec.yaml` passes. Hardware `docs/S3BenchTests.md` T0 and T1 pass.
 
@@ -552,3 +552,4 @@ already holds the pins, and `PlumCec.yaml` builds for the S3 with USB Serial/JTA
 - 2026-10-26: step 14 task 1. The C3 cannot wake the Host over USB. The ESP32-S3 (TinyUSB CDC and HID, `S3WakeSpike.yaml`) wakes the Host from S3 sleep on a CPU USB port, not on the AMD chipset ports. The owner chose the S3 for the PCB (hardware ADR 0005). The firmware port to the S3 needs a new plan step.
 - 2026-10-26: new step 15, the port to the S3 bench. DDC moves to GPIO1 and GPIO2, because GPIO0 is a strap pin on the S3. Hardware `docs/S3BenchTests.md` holds the tests that close the bench. Steps 10 to 13 do not change the PCB, so they do not block M8.
 - 2026-10-26: the S3 bus pins move off GPIO1 to GPIO20, which pull low for 60 µs at power-up (S3 datasheet table 2-2). CEC GPIO21, probe GPIO47, DDC GPIO38 and GPIO39. The pins move into board packages (`packages/board_s3.yaml`, `packages/board_c3.yaml`), and `PlumCec.yaml` builds for the S3. The CI cache key names the chip.
+- 2026-10-28: step 15 code. The TinyUSB link is a separate component (`host_usb`), so `pulse8` keeps one transport switch and the C3 still builds. The sniffer captures in the GPIO interrupt, because a task wakes too late for the first address bit. A capture holds the interrupt for one transaction, so the sniffer is armed only from a button. S3 build: RAM 38.7 %, flash 23.8 %.

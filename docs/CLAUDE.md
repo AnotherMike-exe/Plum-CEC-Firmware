@@ -61,7 +61,7 @@ ESPHome version. The CEC code goes upstream (plan step 13), so it keeps the upst
 log with `ESP_LOGW` or `ESP_LOGE` and continue.
 
 **Project-specific rules**:
-- Logs go to UART0 only. USB Serial/JTAG carries Pulse-Eight bytes and nothing else.
+- Logs go to UART0 only. The USB CDC port carries Pulse-Eight bytes and nothing else.
 - Secrets go in `secrets.yaml` only. Never commit it.
 - Never write to USB from the CEC ISR. Use queues, and drop on overflow.
 - No sleep modes while USB is attached.

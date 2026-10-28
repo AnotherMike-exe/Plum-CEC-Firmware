@@ -1,2 +1,2 @@
-# Template, untested. Copy to /etc/udev/rules.d/ and set the real serial number.
-SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="<SERIAL>", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}+="cec-adapter-inputattach@%k.service"
+# Template, untested. Copy to /etc/udev/rules.d/. The S3 Adapter (host_usb) is 303a:4002, serial PLUMCEC0001.
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="4002", ATTRS{serial}=="PLUMCEC0001", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}+="cec-adapter-inputattach@%k.service"

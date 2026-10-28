@@ -23,13 +23,15 @@ The plan (`docs/Plans/ProofOfConcept.md`) adds each one. Only the ESPHome core p
 |---|---|---|---|
 | ESPHome core | WiFi, native API, OTA, logger on UART0, status LED (S3 GPIO48, C3 GPIO8) | `PlumCec.yaml` | 2 (done) |
 | `hdmi_cec` | CEC RX and TX with arbitration and ACK. A local copy of the ESPHome component, same name (ADR 0004) | ESP-IDF GPIO, gptimer, RMT RX | 5, 6, 9a, 9b |
-| `pulse8` | Pulse-Eight endpoint on USB Serial/JTAG: framing, escaping, commands, TX and RX translation | USB Serial/JTAG driver, FreeRTOS queues | 4, 7, 8, 9c |
+| `pulse8` | Pulse-Eight endpoint: framing, escaping, commands, TX and RX translation | `host_usb` (S3) or the USB Serial/JTAG driver (C3), FreeRTOS queues | 4, 7, 8, 9c |
+| `host_usb` | The S3 USB link to the Host: TinyUSB CDC for Pulse-Eight, HID System Sleep key, remote wakeup | esp_tinyusb 2.2.1, DWC2 registers for the wake signal | 15 |
+| `ddc_sniffer` | Bench only: logs the EDID that the Host reads, and the physical address | GPIO interrupt that reads SDA and SCL | 15 |
 | Identity | Kernel identity while Attached, Default identity while Detached (ADR 0001) | ESPHome preferences | 10 |
 
 ## Data flow
 
 ```
-Host: cec-ctl → /dev/cec0 → pulse8-cec driver ──USB Serial/JTAG──► pulse8 ─┐
+Host: cec-ctl → /dev/cec0 → pulse8-cec driver ──USB CDC (S3 TinyUSB)──► pulse8 ─┐
                                                                             ├─► CEC frame queue ─► hdmi_cec ─► GPIO21 ─► TV
 Home Assistant ──native API (optional MQTT)──────────────────► ESPHome ────┘
 TV ─► GPIO21 ─► hdmi_cec (RX) ─► queue ─► pulse8 (forwards every valid frame) and the API (events)
@@ -114,12 +116,12 @@ previous commit, or the binary from the previous GitHub release.
 
 ### ESP32-C3 native USB
 
-**Chose**: USB Serial/JTAG for the bench, on the C3 and on the S3. The PCB moves to the ESP32-S3 with
-TinyUSB CDC and HID (hardware ADR 0005).
+**Chose**: TinyUSB CDC and HID on the S3 bench and the S3 PCB (`host_usb`, plan step 15). The
+retired C3 bench used USB Serial/JTAG, and `pulse8` still builds for it.
 **Over**: keeping the C3 on the PCB
 **Because**: the C3 cannot wake the Host over USB. The S3 can (`S3WakeSpike.yaml`, plan
 step 14).
-**Revisit when**: plan step 15 ports the USB front-end to TinyUSB.
+**Revisit when**: the PCB needs its own USB PID. `303a:4002` is an Espressif test PID.
 
 ### Bus pins on the S3
 

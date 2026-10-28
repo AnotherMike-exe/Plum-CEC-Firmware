@@ -45,7 +45,9 @@ Full wiring: [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Har
 | What | Where |
 |---|---|
 | Console and logs | UART0 through the devkit bridge (`/dev/cu.usbserial-*` on macOS) |
-| Pulse-Eight protocol | Native USB Serial/JTAG (`/dev/ttyACM*` on the Host, from M3) |
+| Pulse-Eight protocol | S3 TinyUSB CDC, `/dev/serial/by-id/usb-Plum_Solutions_Plum-CEC_PLUMCEC0001-if00` on the Host |
+| Host wake and sleep | API buttons `Wake Host 1/12/50 ms`, `Wake Host by reconnect`, `Sleep Host` |
+| EDID sniffer | API button `Sniff EDID 60 s`. Results in the UART0 and API log |
 | Home Assistant | ESPHome native API, port 6053, Noise encryption |
 | OTA | Port 3232, encrypted with the API key |
 | Fallback AP | `Plum-CEC Fallback`, password in `secrets.yaml` |

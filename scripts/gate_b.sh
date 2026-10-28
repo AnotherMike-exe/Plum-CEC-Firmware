@@ -12,7 +12,8 @@
 # shellcheck disable=SC2016  # wait_for evaluates its argument later, so single quotes are correct
 set -u
 
-PORT=${PLUMCEC_PORT:-/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_58:CF:79:D8:71:70-if00}
+# S3 bench (TinyUSB CDC). The retired C3 bench was usb-Espressif_USB_JTAG_serial_debug_unit_58:CF:79:D8:71:70-if00.
+PORT=${PLUMCEC_PORT:-/dev/serial/by-id/usb-Plum_Solutions_Plum-CEC_PLUMCEC0001-if00}
 CEC=/dev/cec0
 UNIT=plumcec-inputattach
 AWAKE=${PLUMCEC_AWAKE:-30} # seconds awake in each T4 cycle, so the network comes up and SSH can stop the test

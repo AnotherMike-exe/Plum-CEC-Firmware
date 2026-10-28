@@ -40,10 +40,9 @@ Commands, pins and interfaces are in
 
 Known limitations:
 
-- The adapter does not use sleep modes while USB is connected. USB Serial/JTAG stops in
-  light sleep.
-- The native USB device enumerates as Espressif `303a:1001`. Match udev rules on the
-  serial number.
+- The adapter does not use sleep modes while USB is connected.
+- The S3 enumerates as `303a:4002` (an Espressif test PID), serial `PLUMCEC0001`, with one
+  CDC port and one HID keyboard. Match udev rules on the serial number.
 - Wiring and power limits are in the hardware repo.
 
 - [Architecture](docs/ARCHITECTURE.md): the design and the decisions behind it

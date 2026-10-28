@@ -14,3 +14,35 @@ substitutions:
 esp32:
   board: esp32-s3-devkitc-1
   flash_size: 8MB
+
+# The devkit USB port (GPIO19 D-, GPIO20 D+) goes to the Host. TinyUSB gives the Pulse-Eight CDC
+# port and a HID keyboard with remote wakeup (plan step 15).
+host_usb:
+  id: host_usb_link
+
+pulse8:
+  host_usb_id: host_usb_link
+
+# USB 2.0 7.1.7.7 allows a wake signal of 1 to 15 ms. The bench result for 50 ms is in hardware
+# docs/PcbInputs.md, task 1. Reconnect is the fallback when the core does not drive a second wake.
+button:
+  - platform: template
+    name: Wake Host 1 ms
+    on_press:
+      - lambda: id(host_usb_link).wake(1);
+  - platform: template
+    name: Wake Host 12 ms
+    on_press:
+      - lambda: id(host_usb_link).wake(12);
+  - platform: template
+    name: Wake Host 50 ms
+    on_press:
+      - lambda: id(host_usb_link).wake(50);
+  - platform: template
+    name: Wake Host by reconnect
+    on_press:
+      - lambda: id(host_usb_link).reconnect();
+  - platform: template
+    name: Sleep Host
+    on_press:
+      - lambda: id(host_usb_link).sleep();

@@ -29,12 +29,15 @@ packages:
   m1_bench: !include packages/m1_bench.yaml
   timing_probe: !include packages/timing_probe.yaml
   gate_b: !include packages/gate_b.yaml
+  # Bench option (plan step 14 task 4). Remove the line to build without the sniffer.
+  edid_sniffer: !include packages/edid_sniffer.yaml
 
-# UART0 only. USB Serial/JTAG (S3 GPIO19/20, C3 GPIO18/19) carries Pulse-Eight bytes (invariant 1).
+# UART0 only. The USB port carries Pulse-Eight bytes only (invariant 1): TinyUSB CDC on the S3
+# (board package), USB Serial/JTAG on the C3.
 logger:
   hardware_uart: UART0
 
-# Pulse-Eight USB-CEC on USB Serial/JTAG. Step 8 runs it on a stub CEC bus.
+# Pulse-Eight USB-CEC. The board package picks the USB link. Step 8 runs it on a stub CEC bus.
 pulse8:
   id: pulse8_usb
 

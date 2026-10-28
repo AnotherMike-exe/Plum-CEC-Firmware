@@ -3,7 +3,9 @@
 
 #include <cinttypes>
 
+#ifndef USE_PULSE8_HOST_USB
 #include <driver/usb_serial_jtag.h>
+#endif
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -19,6 +21,14 @@ static constexpr uint32_t REPORT_INTERVAL_MS = 10000;
 static constexpr TickType_t READ_TIMEOUT = pdMS_TO_TICKS(5);
 
 void Pulse8Component::setup() {
+#ifdef USE_PULSE8_HOST_USB
+  // host_usb installs TinyUSB in its own setup(), which runs first (higher priority)
+  if (this->host_usb_ == nullptr || this->host_usb_->is_failed()) {
+    ESP_LOGE(TAG, "Host USB is not available");
+    this->mark_failed();
+    return;
+  }
+#else
   usb_serial_jtag_driver_config_t config{};
   config.rx_buffer_size = USB_BUFFER_SIZE;
   config.tx_buffer_size = USB_BUFFER_SIZE;
@@ -28,6 +38,7 @@ void Pulse8Component::setup() {
     this->mark_failed();
     return;
   }
+#endif
   this->installed_ = true;
   this->core_ =
       std::make_unique<Pulse8Core>(this->bus_, [this](std::span<const uint8_t> bytes) { this->write_(bytes); });
@@ -40,7 +51,11 @@ void Pulse8Component::setup() {
 
 void Pulse8Component::write_(std::span<const uint8_t> bytes) {
   // Never wait: when the Host does not read, the buffer fills and the bytes are dropped
+#ifdef USE_PULSE8_HOST_USB
+  int sent = static_cast<int>(this->host_usb_->write(bytes.data(), bytes.size()));
+#else
   int sent = usb_serial_jtag_write_bytes(bytes.data(), bytes.size(), 0);
+#endif
   if (sent < 0)
     sent = 0;
   this->tx_bytes_.fetch_add(sent, std::memory_order_relaxed);
@@ -48,11 +63,19 @@ void Pulse8Component::write_(std::span<const uint8_t> bytes) {
     this->tx_dropped_.fetch_add(bytes.size() - sent, std::memory_order_relaxed);
 }
 
+int Pulse8Component::read_(uint8_t *buf, size_t len) {
+#ifdef USE_PULSE8_HOST_USB
+  return static_cast<int>(this->host_usb_->read(buf, len, READ_TIMEOUT));
+#else
+  return usb_serial_jtag_read_bytes(buf, len, READ_TIMEOUT);
+#endif
+}
+
 void Pulse8Component::task_(void *arg) {
   auto *self = static_cast<Pulse8Component *>(arg);
   uint8_t buf[64];
   while (true) {
-    int len = usb_serial_jtag_read_bytes(buf, sizeof(buf), READ_TIMEOUT);
+    int len = self->read_(buf, sizeof(buf));
     if (len > 0) {
       self->rx_bytes_.fetch_add(len, std::memory_order_relaxed);
       self->core_->feed({buf, static_cast<size_t>(len)});
@@ -90,9 +113,14 @@ void Pulse8Component::loop() {
 void Pulse8Component::dump_config() {
   ESP_LOGCONFIG(TAG,
                 "Pulse-Eight:\n"
-                "  USB Serial/JTAG driver: %s\n"
+                "  USB: %s, %s\n"
                 "  Firmware version: %u\n"
                 "  CEC bus: stub",
+#ifdef USE_PULSE8_HOST_USB
+                "TinyUSB CDC",
+#else
+                "USB Serial/JTAG",
+#endif
                 this->installed_ ? "installed" : "not installed", FIRMWARE_VERSION);
 }
 
