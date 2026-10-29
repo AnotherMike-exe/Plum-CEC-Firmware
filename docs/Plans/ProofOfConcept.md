@@ -8,7 +8,7 @@ sleeps the TV with the Host, like a console.
 records). Both are at `~/Downloads/Plum-CEC/`. This plan lives in the firmware repo.
 The hardware repo links to it from `docs/TODO.md`.
 
-**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5, 6, 8, 9a and 9b done, GATE A and GATE B passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo.
+**Status**: approved 2026-10-19. Steps 1, 2 and 7 done (2026-10-21). Steps 4, 5, 6, 8, 9a and 9b done, GATE A and GATE B passed (2026-10-21). Step 3 waits for the breakout measurements and the bench photo. Step 15 done and the S3 bench closed (2026-10-28): step 14 tasks 1, 3, 4, 5 and 6 done, task 2 waits for the picture check (hardware `docs/PcbInputs.md`). Next: step 9c on the S3.
 
 ## Read this first (every step)
 

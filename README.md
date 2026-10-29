@@ -27,7 +27,7 @@ Working when: the UART0 log shows the WiFi connection and the API server.
 After the Pulse-Eight endpoint works (milestone M3), attach it on the PC:
 
 ```bash
-sudo inputattach --pulse8-cec /dev/ttyACM0
+sudo inputattach --pulse8-cec /dev/serial/by-id/usb-Plum_Solutions_Plum-CEC_PLUMCEC0001-if00
 cec-ctl -d /dev/cec0 --playback -p 1.0.0.0
 ```
 

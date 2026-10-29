@@ -64,7 +64,7 @@ Working when: the UART0 log shows `WiFi: Connected: YES` and `api: Server`, and
 ## 5. Attach on the Host (from milestone M3)
 
 ```bash
-sudo inputattach --pulse8-cec /dev/ttyACM0
+sudo inputattach --pulse8-cec /dev/serial/by-id/usb-Plum_Solutions_Plum-CEC_PLUMCEC0001-if00  # S3 Adapter
 echo 2 | sudo tee /sys/module/pulse8_cec/parameters/debug
 dmesg | tail
 cec-ctl -d /dev/cec0 --playback -p 1.0.0.0

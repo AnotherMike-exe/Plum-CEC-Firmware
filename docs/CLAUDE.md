@@ -12,7 +12,7 @@ The hardware is in the sibling repo
 [Plum-CEC-Hardware](https://github.com/AnotherMike-exe/Plum-CEC-Hardware). The original
 outline is in `_resources/Notes/cec-adapter-overview.md`.
 
-**Stage**: prototype (ESPHome scaffold, milestone M0)
+**Stage**: prototype. Step 15 (S3 port) is done and the S3 bench is closed (2026-10-28). Next: step 9c on the S3.
 **Deployed on**: ESP32-S3-DevKitC-1 v1.0 on the bench (`packages/board_s3.yaml`)
 
 ## Stack

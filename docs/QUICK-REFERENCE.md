@@ -18,7 +18,7 @@ find components -name '*.cpp' -o -name '*.h' | xargs .venv/bin/clang-format --dr
 .venv/bin/pytest scripts/
 
 # Host side (Linux)
-sudo inputattach --pulse8-cec /dev/ttyACM0
+sudo inputattach --pulse8-cec /dev/serial/by-id/usb-Plum_Solutions_Plum-CEC_PLUMCEC0001-if00
 cec-ctl -d /dev/cec0 --playback -p 1.0.0.0
 cec-ctl -d /dev/cec0 -S                  # show topology
 cec-ctl -d /dev/cec0 --monitor-all       # watch all frames
