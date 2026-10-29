@@ -515,7 +515,7 @@ already holds the pins, and `PlumCec.yaml` builds for the S3 with USB Serial/JTA
 1. Done 2026-10-26: `packages/board_s3.yaml` (8 MB flash, CEC GPIO21, probe GPIO47, LED GPIO48). Flash it, and run hardware `docs/S3BenchTests.md` T0.
 2. Done 2026-10-28: `components/host_usb` (TinyUSB CDC and HID, remote wakeup, `303a:4002`, serial `PLUMCEC0001`). `pulse8` takes `host_usb_id`. Without it, `pulse8` stays on USB Serial/JTAG (C3). The Pulse-Eight code does not change.
 3. Done 2026-10-28: API buttons `Wake Host 1 ms`, `Wake Host 12 ms`, `Wake Host 50 ms`, `Wake Host by reconnect` and `Sleep Host`, in `packages/board_s3.yaml`.
-4. Code done 2026-10-28, bench test open (hardware T9): `wake()` waits up to 10 ms for `DSTS.SuspSts` before a second wake, and logs the line state. `Wake Host by reconnect` is the fallback.
+4. Done 2026-10-28. Hardware T8 and T9 pass: 12 ms and 1 ms wake the Host from S3 on CPU port 7-2. The second wake in one suspend is not tested, because each first wake worked. `wake()` waits up to 10 ms for `DSTS.SuspSts` before a second wake, and logs the line state. `Wake Host by reconnect` is the fallback.
 5. Done 2026-10-28: `components/ddc_sniffer` in `packages/edid_sniffer.yaml`. The `Sniff EDID 60 s` button arms it.
 6. Done 2026-10-28: step 11 tasks 1 and 7 updated. `scripts/gate_b.sh` and the udev template use the S3 identity.
 7. Done 2026-10-28: invariant 1 updated for TinyUSB.
@@ -553,3 +553,4 @@ already holds the pins, and `PlumCec.yaml` builds for the S3 with USB Serial/JTA
 - 2026-10-26: new step 15, the port to the S3 bench. DDC moves to GPIO1 and GPIO2, because GPIO0 is a strap pin on the S3. Hardware `docs/S3BenchTests.md` holds the tests that close the bench. Steps 10 to 13 do not change the PCB, so they do not block M8.
 - 2026-10-26: the S3 bus pins move off GPIO1 to GPIO20, which pull low for 60 µs at power-up (S3 datasheet table 2-2). CEC GPIO21, probe GPIO47, DDC GPIO38 and GPIO39. The pins move into board packages (`packages/board_s3.yaml`, `packages/board_c3.yaml`), and `PlumCec.yaml` builds for the S3. The CI cache key names the chip.
 - 2026-10-28: step 15 code. The TinyUSB link is a separate component (`host_usb`), so `pulse8` keeps one transport switch and the C3 still builds. The sniffer captures in the GPIO interrupt, because a task wakes too late for the first address bit. A capture holds the interrupt for one transaction, so the sniffer is armed only from a button. S3 build: RAM 38.7 %, flash 23.8 %.
+- 2026-10-28: S3 bench closed (hardware `docs/PcbInputs.md`). Gate B, CEC timing, EDID read (`1.0.0.0`), initiator 15 (the TV accepts Standby only) and the S3 wake pass. Open: the picture check at the highest TV mode (task 2), and the 6 malformed frames in 1800 for step 9c.
