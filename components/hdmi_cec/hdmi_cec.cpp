@@ -537,6 +537,7 @@ void HDMICEC::tx_task_() {
       if (result == TxResult::SUCCESS) {
         break;
       }
+      ESP_LOGD(TAG, "Attempt %u: %s", attempts, tx_result_str(result));
       // After a lost arbitration the line carried another initiator's frame
       free_bits = result == TxResult::ARBITRATION_LOST ? SIGNAL_FREE_BITS_NEW_INITIATOR : SIGNAL_FREE_BITS_RETRY;
     }

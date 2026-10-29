@@ -65,6 +65,26 @@ button:
       - hdmi_cec.send:
           destination: 0x0
           data: [0x9D, 0x10, 0x00]
+  # Step 14 task 6 (hardware T6): the same frames from initiator 15 (Unregistered). Host cec-ctl
+  # cannot send them while pulse8 runs on the stub bus (step 9c).
+  - platform: template
+    name: CEC 15 Image View On
+    on_press:
+      - lambda: |-
+          static const uint8_t data[] = {0x04};
+          id(cec).send(0xF, 0x0, data);
+  - platform: template
+    name: CEC 15 Active Source
+    on_press:
+      - lambda: |-
+          static const uint8_t data[] = {0x82, 0x10, 0x00};
+          id(cec).send(0xF, 0xF, data);
+  - platform: template
+    name: CEC 15 Standby to TV
+    on_press:
+      - lambda: |-
+          static const uint8_t data[] = {0x36};
+          id(cec).send(0xF, 0x0, data);
 
 # Plan step 9a: ACK mask and frame listener tests.
 select:

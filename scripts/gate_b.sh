@@ -63,16 +63,21 @@ configure() {
     wait_for 'cec-ctl -d $CEC | grep -q "Logical Address  *: 4"' 3000 || fail "logical address 4 not claimed"
 }
 
-kernel_errors() { # count driver error lines since the given dmesg line count
-    dmesg | tail -n +"$1" | grep -E "cec0|pulse8" | grep -ciE "timed out|failed|error"
+# Kernel lines since the given epoch second. The journal, not dmesg: a noisy driver (rtw89 on the
+# bench Host) fills the dmesg ring buffer and old lines drop out, so dmesg counts are wrong.
+kernel_since() {
+    journalctl -k -q --no-pager -o cat --since "@$1"
+}
+
+kernel_errors() { # count driver error lines since the given epoch second
+    kernel_since "$1" | grep -E "cec0|pulse8" | grep -ciE "timed out|failed|error"
 }
 
 t1() {
-    local dev0 versions0 lines0 max=0
+    local dev0 since0 max=0
     detach
     dev0=$(usb_devnum)
-    versions0=$(dmesg | grep -c "Firmware version")
-    lines0=$(($(dmesg | wc -l) + 1))
+    since0=$(date +%s)
     log "T1: 50 attach and detach cycles (USB device $dev0)"
     for i in $(seq 1 50); do
         attach
@@ -80,7 +85,8 @@ t1() {
         ((ATTACH_MS > 1000)) && fail "attach $i took $ATTACH_MS ms"
         detach
     done
-    local versions=$(($(dmesg | grep -c "Firmware version") - versions0))
+    local versions
+    versions=$(kernel_since "$since0" | grep -c "Firmware version")
     log "T2: slowest attach $max ms, version reported $versions of 50 times"
     ((versions == 50)) || fail "version reported $versions times"
     attach
@@ -91,15 +97,15 @@ t1() {
     done
     [ "$(usb_devnum)" = "$dev0" ] || fail "the Adapter reset (USB device $dev0 -> $(usb_devnum))"
     local errors
-    errors=$(kernel_errors "$lines0")
+    errors=$(kernel_errors "$since0")
     ((errors == 0)) || fail "$errors driver error lines"
     log "T1/T2 done, $FAILS failures"
 }
 
 t3() {
-    local seconds=${1:-3600} dev0 lines0 end sent=0
+    local seconds=${1:-3600} dev0 since0 end sent=0
     dev0=$(usb_devnum)
-    lines0=$(($(dmesg | wc -l) + 1))
+    since0=$(date +%s)
     [ -e "$CEC" ] || { attach; configure; }
     log "T3: $seconds s of traffic (USB device $dev0)"
     end=$(($(date +%s) + seconds))
@@ -109,13 +115,13 @@ t3() {
         if ((sent % 30 == 0)); then
             [ -e "$CEC" ] || fail "$CEC gone"
             [ "$(usb_devnum)" = "$dev0" ] || { fail "the Adapter reset"; dev0=$(usb_devnum); }
-            log "T3: $sent sends, $(kernel_errors "$lines0") driver error lines, $FAILS failures"
+            log "T3: $sent sends, $(kernel_errors "$since0") driver error lines, $FAILS failures"
         fi
         sleep 2
     done
     local errors pings
-    errors=$(kernel_errors "$lines0")
-    pings=$(dmesg | tail -n +"$lines0" | grep -c "transmit PING")
+    errors=$(kernel_errors "$since0")
+    pings=$(kernel_since "$since0" | grep -c "transmit PING")
     ((errors == 0)) || fail "$errors driver error lines"
     log "T3 done: $sent sends, $pings driver pings, $FAILS failures"
 }
